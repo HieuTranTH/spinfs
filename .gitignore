@@ -54,5 +54,6 @@ dkms.conf
 # Vim swap files
 *.swp
 
-# ctags file
+# ctags file and script
 tags
+create_tags
