@@ -15,7 +15,11 @@ int main(int argc, char *argv[])
 
         unsigned char buf[] = {0x9f, 0, 0 ,0};
         int ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, sizeof(buf));
+
+        printf("Return:\n");
         printf("%02x %02x %02x %02x\n", buf[0], buf[1], buf[2], buf[3]);
+
+        close(fd_spi);
 
         return (ret != sizeof(buf)) ? ret : 0;
 }
