@@ -1,20 +1,25 @@
 .PHONY = all clean prepare
 
-ALL_TARGET = readID spi_flash.o
+CC = gcc
+CFLAGS = -Wall -Iinclude
+LDLIBS = -lwiringPi
 
-CFLAGS = -Wall -Iinclude -lwiringPi
+ALL_UTILS = readID
 
-all: prepare $(ALL_TARGET)
+all: $(addprefix output/, $(ALL_UTILS))
 
 clean:
 	rm -rf output
-	rm -f src/*.o
+	-rm src/*.o util/*.o
 
 prepare:
 	mkdir -p output
 
-readID: src/util/readID.c spi_flash.o
-	gcc src/util/readID.c src/spi_flash.o -o output/readID $(CFLAGS)
+src/spi_flash.o: src/spi_flash.c include/spi_flash.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-spi_flash.o: src/spi_flash.c include/spi_flash.h
-	gcc -c src/spi_flash.c -o src/spi_flash.o $(CFLAGS)
+util/readID.o: util/readID.c include/spi_flash.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+output/readID: util/readID.o src/spi_flash.o | prepare
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
