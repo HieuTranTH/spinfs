@@ -1,0 +1,1 @@
+time duration of erase operation:

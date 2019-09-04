@@ -1,0 +1,31 @@
+Backgoudn
+
+What is file system
+
+Different type of existing FS
+Traditional FS
+Advantages
+
+Disadvantage
+
+Flash limitation in hardware
+
+
+
+
+My FS
+How it works
+
+Implementation into FUSE lib
+
+Testing result
+
+
+
+Conclusion
+Limitation
+
+Further development
+
+What I achieve with my FS
+
