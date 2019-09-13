@@ -1,1 +1,6 @@
 time duration of erase operation:
+
+
+dumping the whole flash always have bit-flip errors until 0x001000 (first 4096 bytes)
+
+can only read maximum 4092 bytes at once, before return all 0.

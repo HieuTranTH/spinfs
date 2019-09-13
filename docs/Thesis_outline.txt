@@ -1,12 +1,54 @@
-Backgoudn
+Background
 
 What is file system
+File system is a piece of software that allows Operating System to manage data on permanent storages. These permanent storages, which often are optical, hard disk, flash storage drives, etc, are used to store computer data and information for long-term even without electrical power. Therefore, the main function of file systems is providing a way to organize, store, retrieve, and manipulate this information. To bring the most natural experience for end users when storing and retrieving data to and from the persistent storage devices, hierarchy concept has been adapted to the computer world with two main components: file and directory. Thus, file systems are usually built around what is called file and directory.
+
+File and Directory
+From human world, or library in particular, when storing books with careful thought about ease for later look up and retrieval they should be put into shelves sorted by family name of the authors or categorized by their subjects. File system can be compared to a library where a file is a book that has individual piece of information and directory is a shelf that holds multiple books or files that somehow related to each others. This relationship between file and directory makes organizing and looking for computer data more modular. From file system point of view, a file has some information that is used by the computer, and in order to call the exact piece of data that stored in a file, a name must be assigned to the file. As a result, the job of file systems is storing files, which inludes the raw data or "stream of bytes" and its names, on the storage device, then should be able to return back the content of the file when computer requests by passing its name.
+Most computer users are already familiar with functionality of a file or a directory from direct experience when using the computers. Computer programs write data permanently to storage drive into files, which can be simply seen as a piece of information. A bit of information can be some text, graphical image, data structure, any combination of data types or arbitrary bytes only the program can interpret.
+"A file appears as a continuous stream of bytes at higher levels, but the blocks that contain the file data may not be contiguous on disk." File systems is responsible for mapping logical memory in file to physical memory on disk, thus when there is a write request, correct physical blocks will be modified and data on corresponding blocks needs to be returned in case of read request.
+Directory (or Folder in Windows terms) is the way file system organize multiple files. Directory is basically a file, but its content is a list of names, these names can be name of files or names of sub-directories (directories living under a directory). How does this list of names stored in storage plays a crucial part in file lookup performance. If this list is unsorted, searching for a file name in the list must scan through the whole list. Normal file systems take advantage of sorted data structure when storing content of directory for efficiency in lookup operation.
+
+File systems are usually packed within Operating Systems and each Operating System has its own implementation of file systems. Depending on the underlying physical storage medium, purpose when storing data and host Operating System, file system type will be chosen for individual media. For instance, CDs use ISO 9660 file system, hard disks and managed flash drive like SSD depend on what is available from the OS, Microsoft Windows utilizes NTFS while MacOS takes advantage of Apple's APFS and Linux has ext4 developed by the Open-source Community.
+
+Terminologies related to file systems
+Partitions:
+Volume:
+Superblock
+Inode
+Metadata
+
+Basic File System Operations
+Initialization:
+First operation to attach file system to any fresh partition in a drive is always creating an empty file system on a given volume. The volume's characteristics like total size and also user's preferences will be taken into account when creating and placing internal data structures of file system onto the fresh volume. Most of the time, this related to the size of superblock and how does files and directories will be stored later on.
+During the process of initializing file system, empty top-level directory must be created, also known as root directory. Every files and directories created later will be organized under this root directory in the hierarchy. In Linux world, this is usually done by executing mkfs programs, whereas Windows users are more familiar with this process under the name Formatting in Formatting a disk or USB drive.
+
+Mounting
+Mounting is the task of accessing the raw device, using file system program to read its superblock compute necessary information for later reading and writing its content. Even mounting is often a user program, it will return a handle to Operating System for accessing the disk. In graphical OS environment, mounting is transparent and performed automatically when there is a new storage device connecting to the computer. One significant job when mounting a disk is to check the consistency state of the disk, was it cleanly shutdown last time, or there is a power outtage while data was being written to the drive. Such inconsistency can cause corruption to the disk and all data will be lost. In case, file system detects unclean shutdown state of the disk when trying to mount, extra task of verifying and possibly repairing any damage must take action. This task will be handled by another program called file system check, or fsck for short, and it is extremely complex and takes time since whole storage needs to be checked.
+
+Unmounting
+The umount operation involves flushing all unwritten data from RAM to physical media, marking the volume to be "clean" indicating that a normal shutdown is performed and removing the accessing handle from Operating System. After unmounting, it should not be possible to access the storage device until the next mount operation.
+
+Files manipulation (creating, opening, writing, reading, deleting, moving, renaming)
+After mounting a fresh file system, there is nothing on the volume until a new file is created and some data is stored in the file to be written permanently to disk. Creating a file requires name of the file and which directory the file will reside in. If the volume is empty, the new file will be created under root directory. File creation operation only involves allocating inode and writing metadata of the file, the actual data, stream of bytes in the file will be added later when writing to it actual happens. Since having a new file under a directory means the content of the directory has been modified, file system also needs to update the parent directory's content.
+When a file is presented on file system, it needs to be opened before being able to read and write. Similar to mount file system, opening a file returns file handle to Operating System and by using this handle, Operating System can request file system to read or write to a specific location in the file.
+Write operation allows computer programs to store data while read allows extracting information in files. File system needs a reference to the file, which is returned from open operation, offset position in the file to begin reading and writing, memory buffer and length of the requested writing or reading data. Writing to a file can increase file size and in such case, extra memory blocks will be allocated to append to the end of logical file memory array, which eventually update the file i-node and potentially superblock of the file system depending on its implementation. Writing to a logical address of a file will be translated to a physical address by file system, thus making it permanent. Read operation is much simpler, all file system needs to do is map logical position of the file to the corresponding physical block on disk, which comes down to retrieving data from storage device and place it to user's buffer.
+Beside creating file, it is only natural to have option to delete file. File deletion process first removes the name of the file in parent directory's name list and until there are no more programs with open file handle to the file, file system can free the file's resources by returning occupied blocks to the free block pool and the file i-node to the free i-node list. It is not necessary to set all the bit associated with the metadata and data deleted file to be zeros, marking a delete flag in the file metadata and free these block in used/free block pool is enough.
+Rename is often regarded as the most complex operation that a file system has to support. There are many checkings and validations must be passed before actual renaming takes place. These checks include whether the source and destination names are in different directories, then new name can be the same as the old one, if names refer to directories, new name cannot be sub directory of the old name, etc. Only after all validations are satisfied, file system will delete old name entry, create new name entry in new destination directory then update corresponding parent directories.
+
+Directories manipulation (creating, opening, writing, reading, deleting, moving, renaming)
+As mentioned above, directory is basical a file where its data is the name list of sub files and directories. Therefore, most file operations can be applied to directory.
+
+In summary, file system is a program that enable Operating System to store, retrieve and manipulate data on persistent storage device, data here is usually stored as content of files and organized into directories. Each file system targets a specific type of storage on a specific Operating System.
 
 Different type of existing FS
 Traditional FS
+How do they store data in block device (inode, direct, indirect blocks)
 Advantages
 
 Disadvantage
+
+How does flash storage device works
 
 Flash limitation in hardware
 
