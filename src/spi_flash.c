@@ -29,13 +29,16 @@ int spi_close(int fd)
         return ret;
 }
 
-int spi_read_data(int addr, unsigned char *buf, int count)
+int spi_read_data(int addr, unsigned char *buf, int count, int bool_output)
 {
         int ret = 0;
         //Calculate buffer size. 1 byte for command + 3 bytes for
         //address + count bytes for how many following bytes to read
         int buf_size = 1 + ADDRESS_BYTES + count;
-        buf = (unsigned char*)realloc(buf, buf_size * sizeof(unsigned char));
+//        if (buf == NULL)
+//                buf = (unsigned char*)malloc(buf_size * sizeof(*buf));
+//        else
+                buf = (unsigned char*)realloc(buf, buf_size * sizeof(*buf));
 
         //Populate buffer to send
         buf[0] = READ_DATA;
@@ -51,15 +54,15 @@ int spi_read_data(int addr, unsigned char *buf, int count)
 
         ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
 
-        printf("Data sequence of %d byte(s) at address %06x is:\n", count, addr);
-//        if (out_to_screen) {
+        if (bool_output) {
+                printf("Data sequence of %d byte(s) at address %06x is:\n", count, addr);
                 for (int i = 4; i < buf_size; i++) {
                         printf("%02x ", buf[i]);
                         if (((i-4) % 8) == 7) printf(" ");
                         if (((i-4) % 16) == 15) printf("\n");
                 }
-//        }
-        printf("\n\n");
+                printf("\n\n");
+        }
 
 #ifdef VERBOSE
         printf("Read data return: %d\n", ret);
@@ -89,7 +92,7 @@ int spi_write_disable()
         return ret;
 }
 
-int spi_write_data(int addr, unsigned char *write_buf, int count)
+int spi_write_data(int addr, unsigned char *write_buf, int count, int bool_output)
 {
         int ret = 0;
         //Calculate buffer size. 1 byte for command + 3 bytes for
@@ -110,11 +113,12 @@ int spi_write_data(int addr, unsigned char *write_buf, int count)
         printf("\n");
 #endif
 
-        printf("Programming %d byte(s) at address %06x is:\n", count, addr);
-        for (int i = 4; i < buf_size; i++)
-                printf("%02x ", buf[i]);
-        printf("\n\n");
-
+        if (bool_output) {
+                printf("Programming %d byte(s) at address %06x is:\n", count, addr);
+                for (int i = 4; i < buf_size; i++)
+                        printf("%02x ", buf[i]);
+                printf("\n\n");
+        }
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
 
@@ -148,10 +152,14 @@ void dump_flash(const char *name)
         printf("%d\n", count*sizeof(unsigned char));
         unsigned char *d_buff = (unsigned char*)malloc(count*sizeof(unsigned char));
 
+        printf("Dumping whole flash...\n");
+
         for (int i = 0; i < var; i++){
-                spi_read_data(0x000000 + i*count, d_buff, count);
+                spi_read_data(0x000000 + i*count, d_buff, count, 0);
                 fwrite(d_buff+4, sizeof(char), count, dump_file);
+                //usleep(1000);
         }
 
         fclose(dump_file);
+        free(d_buff);
 }
