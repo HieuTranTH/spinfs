@@ -4,7 +4,7 @@ CC = gcc
 CFLAGS = -Wall -Iinclude
 LDLIBS = -lwiringPi
 
-ALL_UTILS = readID
+ALL_UTILS = dump_flash readID read
 
 all: $(addprefix output/, $(ALL_UTILS))
 
@@ -18,8 +18,8 @@ prepare:
 src/spi_flash.o: src/spi_flash.c include/spi_flash.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-util/readID.o: util/readID.c include/spi_flash.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-output/readID: util/readID.o src/spi_flash.o | prepare
+$(addprefix output/, $(ALL_UTILS)): output/%: util/%.o src/spi_flash.o | prepare
 	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
+
+$(addprefix util/, $(addsuffix .o, $(ALL_UTILS))): util/%.o: util/%.c include/spi_flash.h
+	$(CC) $(CFLAGS) -c $< -o $@
