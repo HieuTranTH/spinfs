@@ -20,7 +20,7 @@
  */
 #define SPI_CHANNEL 0  // CE0
 //#define SPI_SPEED 25000000  // ~20 MHz?
-#define SPI_SPEED 50000000  // ~20 MHz?
+#define SPI_SPEED 50000000  // ~40 MHz?
 #define SPI_MODE 3  // Mode 3: CPOL=1, CPHA=1
 
 /*
@@ -66,7 +66,7 @@ int spi_init();
 
 int spi_close(int fd);
 
-int spi_read_data(int addr, unsigned char *buf, int count, int bool_output);
+int spi_read_data(int addr, unsigned char **buf, int count, int bool_output);
 
 int spi_write_enable();
 

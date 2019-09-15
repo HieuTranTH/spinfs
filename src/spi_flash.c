@@ -3,7 +3,6 @@
 /*
  * Global variables
  */
-//int out_to_screen = 1;
 
 int spi_init()
 {
@@ -29,40 +28,41 @@ int spi_close(int fd)
         return ret;
 }
 
-int spi_read_data(int addr, unsigned char *buf, int count, int bool_output)
+int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
 {
         int ret = 0;
         //Calculate buffer size. 1 byte for command + 3 bytes for
         //address + count bytes for how many following bytes to read
         int buf_size = 1 + ADDRESS_BYTES + count;
-//        if (buf == NULL)
-//                buf = (unsigned char*)malloc(buf_size * sizeof(*buf));
-//        else
-                buf = (unsigned char*)realloc(buf, buf_size * sizeof(*buf));
+
+        printf("Address of buffer in Heap in read: %p\n", *buf);
+        *buf = (unsigned char*)realloc(*buf, buf_size * sizeof(**buf));
+
+        if (*buf == NULL) {
+                perror("Realloc error.");
+                exit(5);
+        }
+        memset(*buf, 0xAA, 4100);       //initialized whole buffer to aa (to easily catch error)
 
         //Populate buffer to send
-        buf[0] = READ_DATA;
+        (*buf)[0] = READ_DATA;
         //taking little endian into account
-        buf[1] = *((char*)&addr + 2);
-        buf[2] = *((char*)&addr + 1);
-        buf[3] = *(char*)&addr;
-#if 0
-        for (int i = 0; i < buf_size; i++)
-                printf("%02x ", buf[i]);
-        printf("\n");
-#endif
+        (*buf)[1] = *((char*)&addr + 2);
+        (*buf)[2] = *((char*)&addr + 1);
+        (*buf)[3] = *(char*)&addr;
 
-        ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
+        ret = wiringPiSPIDataRW(SPI_CHANNEL, *buf, buf_size);
 
         if (bool_output) {
                 printf("Data sequence of %d byte(s) at address %06x is:\n", count, addr);
                 for (int i = 4; i < buf_size; i++) {
-                        printf("%02x ", buf[i]);
+                        printf("%02x ", (*buf)[i]);
                         if (((i-4) % 8) == 7) printf(" ");
                         if (((i-4) % 16) == 15) printf("\n");
                 }
                 printf("\n\n");
         }
+        printf("Address of buffer in Heap in read after realloc: %p\n", *buf);
 
 #ifdef VERBOSE
         printf("Read data return: %d\n", ret);
@@ -107,11 +107,6 @@ int spi_write_data(int addr, unsigned char *write_buf, int count, int bool_outpu
         buf[2] = *((char*)&addr + 1);
         buf[3] = *(char*)&addr;
         memcpy(buf + 4, write_buf, count);
-#if 0
-        for (int i = 0; i < buf_size; i++)
-                printf("%02x ", buf[i]);
-        printf("\n");
-#endif
 
         if (bool_output) {
                 printf("Programming %d byte(s) at address %06x is:\n", count, addr);
@@ -155,9 +150,8 @@ void dump_flash(const char *name)
         printf("Dumping whole flash...\n");
 
         for (int i = 0; i < var; i++){
-                spi_read_data(0x000000 + i*count, d_buff, count, 0);
+                spi_read_data(0x000000 + i*count, &d_buff, count, 0);
                 fwrite(d_buff+4, sizeof(char), count, dump_file);
-                //usleep(1000);
         }
 
         fclose(dump_file);
