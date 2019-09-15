@@ -1,4 +1,5 @@
 #include "spi_flash.h"
+#include <time.h>
 
 /*
  * Global variables
@@ -35,14 +36,13 @@ int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
         //address + count bytes for how many following bytes to read
         int buf_size = 1 + ADDRESS_BYTES + count;
 
-        printf("Address of buffer in Heap in read: %p\n", *buf);
         *buf = (unsigned char*)realloc(*buf, buf_size * sizeof(**buf));
 
         if (*buf == NULL) {
                 perror("Realloc error.");
                 exit(5);
         }
-        memset(*buf, 0xAA, 4100);       //initialized whole buffer to aa (to easily catch error)
+        memset(*buf, 0xAA, buf_size);       //initialized whole buffer to aa (to easily catch error)
 
         //Populate buffer to send
         (*buf)[0] = READ_DATA;
@@ -62,7 +62,6 @@ int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
                 }
                 printf("\n\n");
         }
-        printf("Address of buffer in Heap in read after realloc: %p\n", *buf);
 
 #ifdef VERBOSE
         printf("Read data return: %d\n", ret);
