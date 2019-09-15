@@ -32,15 +32,17 @@ int main(int argc, char *argv[])
 
         unsigned char *buff;
         buff = (unsigned char*)malloc(4 * sizeof(*buff));
+        printf("Address of buffer in Heap in main: %p\n", buff);
 
         //printf("0x%06x %d\n", addr, count);
         //exit(0);
 
         int fd_spi = spi_init();
 
-        int ret = spi_read_data(addr, buff, count, 1);
+        int ret = spi_read_data(addr, &buff, count, 1);
+        printf("Address of buffer in Heap in main after realloc: %p\n", buff);
 
-        close(fd_spi);
+        spi_close(fd_spi);
         free(buff);
 
         return ret;
