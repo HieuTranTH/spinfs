@@ -1,7 +1,7 @@
 .PHONY = all clean prepare
 
 CC = gcc
-CFLAGS = -Wall -Iinclude
+CFLAGS = -Wall -Iinclude -g
 LDLIBS = -lwiringPi
 
 ALL_UTILS = dump_flash readID read
