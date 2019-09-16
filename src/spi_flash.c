@@ -1,5 +1,4 @@
 #include "spi_flash.h"
-#include <time.h>
 
 /*
  * Global variables
