@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
         int fd_spi = spi_init();
 
         dump_flash(argc == 2 ? argv[1] : "flash_dump.bin");
-        close(fd_spi);
+        spi_close(fd_spi);
 
         return 0;
 }

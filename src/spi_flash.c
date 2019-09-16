@@ -39,7 +39,7 @@ int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
         *buf = (unsigned char*)realloc(*buf, buf_size * sizeof(**buf));
 
         if (*buf == NULL) {
-                perror("Realloc error.");
+                perror("Realloc error:");
                 exit(5);
         }
         memset(*buf, 0xAA, buf_size);       //initialized whole buffer to aa (to easily catch error)
@@ -91,13 +91,17 @@ int spi_write_disable()
         return ret;
 }
 
-int spi_write_data(int addr, unsigned char *write_buf, int count, int bool_output)
+int spi_write_data(int addr, unsigned char **write_buf, int count, int bool_output)
 {
         int ret = 0;
         //Calculate buffer size. 1 byte for command + 3 bytes for
         //address + count bytes for how many following bytes to write
         int buf_size = 1 + ADDRESS_BYTES + count;
         unsigned char *buf = (unsigned char*)malloc(buf_size * sizeof(unsigned char));
+        if (*buf == NULL) {
+                perror("Realloc error:");
+                exit(5);
+        }
 
         //Populate buffer to send
         buf[0] = PAGE_PROGRAM;
@@ -134,25 +138,31 @@ unsigned char *str_hex_converter(unsigned char *s)
 
 void dump_flash(const char *name)
 {
-        //out_to_screen = 0;
         FILE *dump_file = fopen(name, "w");
         if (dump_file == NULL){
-                perror("Open dump_file error");
+                perror("Open dump_file error:");
                 exit(1);
         }
 
-        int var = 4096;
-        int count = MAIN_FLASH_SIZE/var;
-        printf("%d\n", count*sizeof(unsigned char));
-        unsigned char *d_buff = (unsigned char*)malloc(count*sizeof(unsigned char));
+        int transaction_count = 4096;
+        int transaction_size = MAIN_FLASH_SIZE/transaction_count;
+        printf("Transaction size is: %d\n", transaction_size*sizeof(unsigned char));
+
+        unsigned char *d_buff = malloc(sizeof(*d_buff));
+        if (d_buff == NULL) {
+                perror("d_buff malloc error:");
+                exit(5);
+        }
 
         printf("Dumping whole flash...\n");
 
-        for (int i = 0; i < var; i++){
-                spi_read_data(0x000000 + i*count, &d_buff, count, 0);
-                fwrite(d_buff+4, sizeof(char), count, dump_file);
+        for (int i = 0; i < transaction_count; i++){
+                spi_read_data(i*transaction_size, &d_buff, transaction_size, 0);
+                // d_buff is guaranteed to be reallocated with size + 4 bytes
+                fwrite(d_buff+4, sizeof(char), transaction_size, dump_file);
         }
 
+        printf("Finish dumping!\n");
         fclose(dump_file);
         free(d_buff);
 }
