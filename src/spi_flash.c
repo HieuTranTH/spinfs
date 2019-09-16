@@ -36,7 +36,8 @@ int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
         //address + count bytes for how many following bytes to read
         int buf_size = 1 + ADDRESS_BYTES + count;
 
-        *buf = (unsigned char*)realloc(*buf, buf_size * sizeof(**buf));
+        //Reallocate buf to have size = buf_size (+4 bytes)
+        *buf = realloc(*buf, buf_size * sizeof(**buf));
 
         if (*buf == NULL) {
                 perror("Realloc error:");
@@ -97,8 +98,11 @@ int spi_write_data(int addr, unsigned char **write_buf, int count, int bool_outp
         //Calculate buffer size. 1 byte for command + 3 bytes for
         //address + count bytes for how many following bytes to write
         int buf_size = 1 + ADDRESS_BYTES + count;
+
+        //Reallocate buf to have size = buf_size (+4 bytes)
+        *write_buf = realloc(*write_buf, buf_size * sizeof(**write_buf));
         unsigned char *buf = (unsigned char*)malloc(buf_size * sizeof(unsigned char));
-        if (*buf == NULL) {
+        if (buf == NULL) {
                 perror("Realloc error:");
                 exit(5);
         }
@@ -138,6 +142,7 @@ unsigned char *str_hex_converter(unsigned char *s)
 
 void dump_flash(const char *name)
 {
+        int ret = 0;
         FILE *dump_file = fopen(name, "w");
         if (dump_file == NULL){
                 perror("Open dump_file error:");
@@ -145,10 +150,13 @@ void dump_flash(const char *name)
         }
 
         int transaction_count = 4096;
-        int transaction_size = MAIN_FLASH_SIZE/transaction_count;
+        int transaction_size = MAIN_FLASH_SIZE/transaction_count;       /* 2048 bytes */
+        int buffer_size = 1 + ADDRESS_BYTES + transaction_size;         /* 2052 bytes */
         printf("Transaction size is: %d\n", transaction_size*sizeof(unsigned char));
+        printf("Buffer size is: %d\n", buffer_size*sizeof(unsigned char));
 
-        unsigned char *d_buff = malloc(sizeof(*d_buff));
+        /* allocate dumping buffer */
+        unsigned char *d_buff = calloc(buffer_size, sizeof(*d_buff));
         if (d_buff == NULL) {
                 perror("d_buff malloc error:");
                 exit(5);
@@ -156,8 +164,23 @@ void dump_flash(const char *name)
 
         printf("Dumping whole flash...\n");
 
+        int addr = 0;
         for (int i = 0; i < transaction_count; i++){
-                spi_read_data(i*transaction_size, &d_buff, transaction_size, 0);
+                addr = i * transaction_size;
+
+                //Populate buffer to send
+                d_buff[0] = READ_DATA;
+                //taking little endian into account
+                d_buff[1] = *((char*)&addr + 2);
+                d_buff[2] = *((char*)&addr + 1);
+                d_buff[3] = *(char*)&addr;
+
+                ret = wiringPiSPIDataRW(SPI_CHANNEL, d_buff, buffer_size);
+                if (ret != buffer_size) {
+                        printf("SPIDataRW failure!\n");
+                        exit(1);
+                }
+                //spi_read_data(i*transaction_size, &d_buff, transaction_size, 0);
                 // d_buff is guaranteed to be reallocated with size + 4 bytes
                 fwrite(d_buff+4, sizeof(char), transaction_size, dump_file);
         }
