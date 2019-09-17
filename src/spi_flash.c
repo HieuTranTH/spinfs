@@ -220,10 +220,10 @@ void dump_flash(const char *name)
                 exit(5);
         }
 
-        printf("Dumping whole flash...\n");
+        printf("Dumping whole flash to file [%s] ...\n", name);
 
         int addr = 0;
-        for (int i = 0; i < transaction_count; i++){
+        for (int i = 0; i < transaction_count; i++) {
                 addr = i * transaction_size;
 
                 //Populate buffer to send
