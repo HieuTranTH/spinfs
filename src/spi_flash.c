@@ -1,5 +1,16 @@
 #include "spi_flash.h"
 
+//Debug code segments
+/*
+   printf("Checking buffer of %d byte(s) at address %06x is:\n", count, addr);
+   for (int i = 0; i < buf_size; i++) {
+   printf("%02x ", (*buf)[i]);
+   if (((i-4) % 8) == 7) printf(" ");
+   if (((i-4) % 16) == 15) printf("\n");
+   }
+   printf("\n\n");
+   */
+
 /*
  * Global variables
  */
@@ -28,6 +39,45 @@ int spi_close(int fd)
         return ret;
 }
 
+int spi_erase_sector(int addr)
+{
+        int ret = 0;
+        int buf_size = 4;               // buffer size for erase operation always is contant
+
+        unsigned char *buf = calloc(buf_size, sizeof(*buf));
+        if (buf == NULL) {
+                perror("Realloc error:");
+                exit(5);
+        }
+
+        //Populate buffer to send
+        buf[0] = SECTOR_ERASE;
+        //taking little endian into account
+        buf[1] = *((char*)&addr + 2);
+        buf[2] = *((char*)&addr + 1);
+        buf[3] = *(char*)&addr;
+
+        /*
+        printf("Checking buffer of %d byte(s) at address %06x is:\n", buf_size, addr);
+        for (int i = 0; i < buf_size; i++) {
+                printf("%02x ", buf[i]);
+                if (((i-4) % 8) == 7) printf(" ");
+                if (((i-4) % 16) == 15) printf("\n");
+        }
+        printf("\n\n");
+        exit(0);
+        */
+
+        printf("Erasing a sector of 4 KiB at address %06x ...\n", addr);
+        spi_write_enable();
+        ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
+        //TODO: poll BUSY bit until erase operation is finished
+        printf("Finish erasing!\n");
+
+        free(buf);
+        return ret;
+}
+
 int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
 {
         int ret = 0;
@@ -41,7 +91,7 @@ int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
                 perror("Realloc error:");
                 exit(5);
         }
-        memset(*buf, 0xAA, buf_size);       //initialized whole buffer to aa (to easily catch error)
+        memset(*buf, 0xAA, buf_size);       //initialized whole buffer to aa (to easily catch error) FIXME
 
         //Populate buffer to send
         (*buf)[0] = READ_DATA;

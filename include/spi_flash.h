@@ -66,6 +66,8 @@ int spi_init();
 
 int spi_close(int fd);
 
+int spi_erase_sector(int addr);
+
 int spi_read_data(int addr, unsigned char **buf, int count, int bool_output);
 
 int spi_write_enable();
