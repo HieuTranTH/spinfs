@@ -4,7 +4,7 @@ CC = gcc
 CFLAGS = -Wall -Iinclude -g
 LDLIBS = -lwiringPi
 
-ALL_UTILS = dump_flash erase_sector readID read write
+ALL_UTILS = dump_flash erase_block erase_chip erase_sector readID read write
 
 all: $(addprefix output/, $(ALL_UTILS))
 
