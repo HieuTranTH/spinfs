@@ -37,7 +37,6 @@ int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
 
         //Reallocate buf to have size = buf_size (+4 bytes)
         *buf = realloc(*buf, buf_size * sizeof(**buf));
-
         if (*buf == NULL) {
                 perror("Realloc error:");
                 exit(5);
@@ -91,7 +90,7 @@ int spi_write_disable()
         return ret;
 }
 
-int spi_write_data(int addr, unsigned char **write_buf, int count, int bool_output)
+int spi_write_data(int addr, unsigned char **buf, int count, int bool_output)
 {
         int ret = 0;
         //Calculate buffer size. 1 byte for command + 3 bytes for
@@ -99,12 +98,12 @@ int spi_write_data(int addr, unsigned char **write_buf, int count, int bool_outp
         int buf_size = 1 + ADDRESS_BYTES + count;
 
         //Reallocate buf to have size = buf_size (+4 bytes)
-        *write_buf = realloc(*write_buf, buf_size * sizeof(**write_buf));
-        unsigned char *buf = (unsigned char*)malloc(buf_size * sizeof(unsigned char));
-        if (buf == NULL) {
+        *buf = realloc(*buf, buf_size * sizeof(**buf));
+        if (*buf == NULL) {
                 perror("Realloc error:");
                 exit(5);
         }
+        memmove((*buf)[4], (*buf)[0], count);
 
         //Populate buffer to send
         buf[0] = PAGE_PROGRAM;
@@ -112,18 +111,27 @@ int spi_write_data(int addr, unsigned char **write_buf, int count, int bool_outp
         buf[1] = *((char*)&addr + 2);
         buf[2] = *((char*)&addr + 1);
         buf[3] = *(char*)&addr;
-        memcpy(buf + 4, write_buf, count);
+
+        printf("Checking buffer of %d byte(s) at address %06x is:\n", count, addr);
+        for (int i = 0; i < buf_size; i++) {
+                printf("%02x ", (*buf)[i]);
+                if (((i-4) % 8) == 7) printf(" ");
+                if (((i-4) % 16) == 15) printf("\n");
+        }
+        printf("\n\n");
 
         if (bool_output) {
                 printf("Programming %d byte(s) at address %06x is:\n", count, addr);
-                for (int i = 4; i < buf_size; i++)
-                        printf("%02x ", buf[i]);
+                for (int i = 4; i < buf_size; i++) {
+                        printf("%02x ", (*buf)[i]);
+                        if (((i-4) % 8) == 7) printf(" ");
+                        if (((i-4) % 16) == 15) printf("\n");
+                }
                 printf("\n\n");
         }
+        eixt(0)
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
-
-        free(buf);
 
 #ifdef VERBOSE
         printf("Write data return: %d\n", ret);

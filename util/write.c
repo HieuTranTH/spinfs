@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
         if (argc > 3) {
                 printf("Too many arguments\n\n");
                 print_usage();
-                exit(1);
+                exit(EXIT_FAILURE);
         }
         else if (argc == 3) {
                 addr = strtol(argv[1], NULL, 16);
@@ -30,18 +30,14 @@ int main(int argc, char *argv[])
         }
         print_usage();
 
-        unsigned char *buff;
-        buff = (unsigned char*)malloc(4 * sizeof(unsigned char));
-
-        //printf("0x%06x %d\n", addr, count);
-        //exit(0);
+        unsigned char *buffer = malloc(sizeof(*buffer));
 
         int fd_spi = spi_init();
 
-        int ret = spi_write_data(addr, buff, count, 1);
+        int ret = spi_write_data(addr, &buffer, count, 1);
 
-        close(fd_spi);
-        free(buff);
+        spi_close(fd_spi);
+        free(buffer);
 
         return ret;
 }
