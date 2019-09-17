@@ -4,7 +4,7 @@ CC = gcc
 CFLAGS = -Wall -Iinclude -g
 LDLIBS = -lwiringPi
 
-ALL_UTILS = dump_flash readID read
+ALL_UTILS = dump_flash readID read write
 
 all: $(addprefix output/, $(ALL_UTILS))
 

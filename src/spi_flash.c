@@ -103,15 +103,16 @@ int spi_write_data(int addr, unsigned char **buf, int count, int bool_output)
                 perror("Realloc error:");
                 exit(5);
         }
-        memmove((*buf)[4], (*buf)[0], count);
+        memmove((*buf + 4), *buf, count);
 
         //Populate buffer to send
-        buf[0] = PAGE_PROGRAM;
+        (*buf)[0] = PAGE_PROGRAM;
         //taking little endian into account
-        buf[1] = *((char*)&addr + 2);
-        buf[2] = *((char*)&addr + 1);
-        buf[3] = *(char*)&addr;
+        (*buf)[1] = *((char*)&addr + 2);
+        (*buf)[2] = *((char*)&addr + 1);
+        (*buf)[3] = *(char*)&addr;
 
+        /*
         printf("Checking buffer of %d byte(s) at address %06x is:\n", count, addr);
         for (int i = 0; i < buf_size; i++) {
                 printf("%02x ", (*buf)[i]);
@@ -119,6 +120,7 @@ int spi_write_data(int addr, unsigned char **buf, int count, int bool_output)
                 if (((i-4) % 16) == 15) printf("\n");
         }
         printf("\n\n");
+        */
 
         if (bool_output) {
                 printf("Programming %d byte(s) at address %06x is:\n", count, addr);
@@ -129,9 +131,8 @@ int spi_write_data(int addr, unsigned char **buf, int count, int bool_output)
                 }
                 printf("\n\n");
         }
-        eixt(0)
         spi_write_enable();
-        ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
+        ret = wiringPiSPIDataRW(SPI_CHANNEL, *buf, buf_size);
 
 #ifdef VERBOSE
         printf("Write data return: %d\n", ret);

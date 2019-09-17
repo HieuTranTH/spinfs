@@ -3,34 +3,41 @@
 void print_usage()
 {
         fprintf(stderr, "####### Write some bytes at some address #######\n");
-        fprintf(stderr, "Format: write [address] [data_string]\n");
-        fprintf(stderr, "### address default = 0x000000 ###\n");
+        fprintf(stderr, "Format: write address byte1 byte2 ...\n");
+        fprintf(stderr, "byte is written in hex with 2 digits (e.g. ff 1c)\n");
         fprintf(stderr, "\n");
+}
+
+char *parse_string_to_hex(char* buf)
+{
+
+        return buf;
+
 }
 
 int main(int argc, char *argv[])
 {
         int addr, count;
-        if (argc > 3) {
-                printf("Too many arguments\n\n");
+        unsigned char *buffer;
+        long int strtol_buf = 0;
+        if (argc < 3) {
+                printf("Too less arguments\n\n");
                 print_usage();
                 exit(EXIT_FAILURE);
         }
-        else if (argc == 3) {
-                addr = strtol(argv[1], NULL, 16);
-                count = atoi(argv[2]);
-        }
-        else if (argc == 2) {
-                addr = strtol(argv[1], NULL, 16);
-                count = 1;
-        }
-        else if (argc == 1) {
-                addr = 0x000000;
-                count = 1;
-        }
         print_usage();
 
-        unsigned char *buffer = malloc(sizeof(*buffer));
+        addr = strtol(argv[1], NULL, 16);
+        count = argc - 2;
+
+        buffer = calloc(count, sizeof(char));
+        /*
+         * Populate write buffer with the rest of command line parameters
+         */
+        for (int i = 0; i < count; i++) {
+                strtol_buf = strtol(argv[i + 2], NULL, 16);
+                buffer[i] = *(char*)&strtol_buf;
+        }
 
         int fd_spi = spi_init();
 
