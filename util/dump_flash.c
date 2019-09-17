@@ -4,7 +4,8 @@ void print_usage()
 {
         fprintf(stderr, "####### Dumping the whole flash to a file #######\n");
         fprintf(stderr, "Usage: %s [file]\n", "dump_flash");
-        fprintf(stderr, "### If no file name is specified, default name \"flash_dump.bin\" will be used ###\n\n");
+        fprintf(stderr, "### If no file name is specified, default name \"flash_dump.bin\" will be used ###\n");
+        fprintf(stderr, "\n");
 }
 
 int main(int argc, char *argv[])

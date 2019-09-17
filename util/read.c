@@ -2,10 +2,11 @@
 
 void print_usage()
 {
-        printf("####### Read some bytes at some address #######\n");
-        printf("Format: read [address] [bytes]\n");
-        printf("### address default = 0x000000 ###\n");
-        printf("### bytes default   = 1        ###\n\n");
+        fprintf(stderr, "####### Read some bytes at some address #######\n");
+        fprintf(stderr, "Format: read [address] [bytes]\n");
+        fprintf(stderr, "### address default = 0x000000 ###\n");
+        fprintf(stderr, "### bytes default   = 1        ###\n");
+        fprintf(stderr, "\n");
 }
 
 int main(int argc, char *argv[])

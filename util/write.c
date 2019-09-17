@@ -2,10 +2,10 @@
 
 void print_usage()
 {
-        printf("####### Write some bytes at some address #######\n");
-        printf("Format: write [address] [bytes]\n");
-        printf("### address default = 0x000000 ###\n");
-        printf("### bytes default   = 1        ###\n\n");
+        fprintf(stderr, "####### Write some bytes at some address #######\n");
+        fprintf(stderr, "Format: write [address] [data_string]\n");
+        fprintf(stderr, "### address default = 0x000000 ###\n");
+        fprintf(stderr, "\n");
 }
 
 int main(int argc, char *argv[])
