@@ -30,14 +30,14 @@ int main(int argc, char *argv[])
         }
         print_usage();
 
-        unsigned char *buff = malloc(sizeof(*buff));
+        unsigned char *buffer = malloc(sizeof(*buffer));
 
         int fd_spi = spi_init();
 
-        int ret = spi_read_data(addr, &buff, count, 1);
+        int ret = spi_read_data(addr, &buffer, count, 1);
 
         spi_close(fd_spi);
-        free(buff);
+        free(buffer);
 
         return ret;
 }
