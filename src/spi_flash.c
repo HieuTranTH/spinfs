@@ -3,7 +3,7 @@
 /*
  * Global variables
  */
-unsigned char static_buffer[MAX_BUFFER_SIZE + 4];
+unsigned char static_buffer[BUFFER_MAX_TOTAL_SIZE];
 
 /*
  * Generic functions
@@ -49,7 +49,7 @@ int spi_close(int fd)
 int spi_erase_sector(int addr)
 {
         int ret = 0;
-        int buf_size = 4;               // buffer size for erase operation always is contant
+        int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
 
         unsigned char *buf = calloc(buf_size, sizeof(*buf));
         if (buf == NULL) {
@@ -88,7 +88,7 @@ int spi_erase_sector(int addr)
 int spi_erase_block(int addr)
 {
         int ret = 0;
-        int buf_size = 4;               // buffer size for erase operation always is contant
+        int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
 
         unsigned char *buf = calloc(buf_size, sizeof(*buf));
         if (buf == NULL) {
@@ -194,11 +194,11 @@ int spi_read_data(int addr, unsigned char *buf, int count)
                 static_buffer[1] = *((char*)&addr + 2);
                 static_buffer[2] = *((char*)&addr + 1);
                 static_buffer[3] = *(char*)&addr;
-                tr_size = count > MAX_BUFFER_SIZE ? (MAX_BUFFER_SIZE + 4) : (count + 4);
+                tr_size = count > BUFFER_MAX_DATA_SIZE ? BUFFER_MAX_TOTAL_SIZE : (count + BUFFER_RESERVED_BYTE);
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
-                memcpy(buf + i*MAX_BUFFER_SIZE, static_buffer + 4, tr_size - 4);
-                count -= tr_size - 4;
-                addr += tr_size - 4;
+                memcpy(buf + i*BUFFER_MAX_DATA_SIZE, static_buffer + BUFFER_RESERVED_BYTE, tr_size - BUFFER_RESERVED_BYTE);
+                count -= tr_size - BUFFER_RESERVED_BYTE;
+                addr += tr_size - BUFFER_RESERVED_BYTE;
                 i++;
         }
 

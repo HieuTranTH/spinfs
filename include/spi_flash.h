@@ -26,7 +26,9 @@
  * Default Linux SPI bufsize is 4096, but first 4 bytes will be used for
  * COMMAND and ADDRESS, so the biggest buffer size that is power of 2 is 2048
  */
-#define MAX_BUFFER_SIZE 2048
+#define BUFFER_MAX_DATA_SIZE 2048   //maximum chunk of data can be read from the flash in one transaction
+#define BUFFER_RESERVED_BYTE 4      //number of reserved bytes for Command and Address at the beginning of SPI transfer buffer
+#define BUFFER_MAX_TOTAL_SIZE (BUFFER_MAX_DATA_SIZE + BUFFER_RESERVED_BYTE)
 
 /*
  * NOR Flash info
