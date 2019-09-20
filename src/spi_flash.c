@@ -14,6 +14,8 @@
 /*
  * Global variables
  */
+unsigned char static_buffer[MAX_BUFFER_SIZE + 4];
+
 /*
  * Generic functions
  */
@@ -37,7 +39,7 @@ int spi_init()
 
         printf("Initializing...\n");
         fd = wiringPiSPISetupMode(SPI_CHANNEL, SPI_SPEED, SPI_MODE);
-        sleep(1);
+        //sleep(1);
 
         printf("Done initialized.\n");
         printf("SPI channel: %d\n", SPI_CHANNEL);
@@ -148,6 +150,7 @@ int spi_erase_chip(void)
         return ret;
 }
 
+/*
 int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
 {
         int ret = 0;
@@ -180,6 +183,34 @@ int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
                         if (((i-4) % 16) == 15) printf("\n");
                 }
                 printf("\n\n");
+        }
+
+#ifdef VERBOSE
+        printf("Read data return: %d\n", ret);
+#endif
+        return ret;
+}
+*/
+
+int spi_read_data(int addr, unsigned char *buf, int count)
+{
+        int ret = 0;
+        int i = 0 ;
+        int tr_size = 0;
+
+        while (count > 0) {
+                //Populate buffer to send
+                static_buffer[0] = READ_DATA;
+                //taking little endian into account
+                static_buffer[1] = *((char*)&addr + 2);
+                static_buffer[2] = *((char*)&addr + 1);
+                static_buffer[3] = *(char*)&addr;
+                tr_size = count > MAX_BUFFER_SIZE ? (MAX_BUFFER_SIZE + 4) : (count + 4);
+                ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
+                memcpy(buf + i*MAX_BUFFER_SIZE, static_buffer + 4, tr_size - 4);
+                count -= tr_size - 4;
+                addr += tr_size - 4;
+                i++;
         }
 
 #ifdef VERBOSE

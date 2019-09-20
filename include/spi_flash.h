@@ -22,6 +22,11 @@
 //#define SPI_SPEED 25000000  // ~20 MHz?
 #define SPI_SPEED 50000000  // ~40 MHz?
 #define SPI_MODE 3  // Mode 3: CPOL=1, CPHA=1
+/*
+ * Default Linux SPI bufsize is 4096, but first 4 bytes will be used for
+ * COMMAND and ADDRESS, so the biggest buffer size that is power of 2 is 2048
+ */
+#define MAX_BUFFER_SIZE 2048
 
 /*
  * NOR Flash info
@@ -75,7 +80,7 @@ int spi_erase_sector(int addr);
 int spi_erase_block(int addr);
 int spi_erase_chip(void);
 
-int spi_read_data(int addr, unsigned char **buf, int count, int bool_output);
+int spi_read_data(int addr, unsigned char *buf, int count);
 
 int spi_write_enable();
 
