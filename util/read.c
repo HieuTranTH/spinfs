@@ -22,8 +22,8 @@ int main(int argc, char *argv[])
                 count = atoi(argv[2]);
         }
         else if (argc == 2) {
-                addr = strtol(argv[1], NULL, 16);
-                count = 1;
+                addr = 0x000000;
+                count = atoi(argv[1]);
         }
         else if (argc == 1) {
                 addr = 0x000000;
