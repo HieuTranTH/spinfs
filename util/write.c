@@ -31,6 +31,10 @@ int main(int argc, char *argv[])
         count = argc - 2;
 
         buffer = calloc(count, sizeof(char));
+        if (buffer == NULL) {
+                perror("Allocation error:");
+                exit(5);
+        }
         /*
          * Populate write buffer with the rest of command line parameters
          */
@@ -41,7 +45,7 @@ int main(int argc, char *argv[])
 
         int fd_spi = spi_init();
 
-        int ret = spi_write_data(addr, &buffer, count, 1);
+        int ret = spi_write_data(addr, buffer, count);
 
         spi_close(fd_spi);
         free(buffer);
