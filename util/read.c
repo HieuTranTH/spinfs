@@ -31,11 +31,18 @@ int main(int argc, char *argv[])
         }
         print_usage();
 
-        unsigned char *buffer = malloc(sizeof(*buffer));
+        unsigned char *buffer = malloc(count * sizeof(*buffer));
+        if (buffer == NULL) {
+                perror("Allocation error:");
+                exit(5);
+        }
 
         int fd_spi = spi_init();
 
-        int ret = spi_read_data(addr, &buffer, count, 1);
+        int ret = spi_read_data(addr, buffer, count);
+
+        printf("Data sequence of %d byte(s) at address %06x is:\n", count, addr);
+        print_buffer(buffer, count);
 
         spi_close(fd_spi);
         free(buffer);
