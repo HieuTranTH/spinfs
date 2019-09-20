@@ -64,17 +64,6 @@ int spi_erase_sector(int addr)
         buf[2] = *((char*)&addr + 1);
         buf[3] = *(char*)&addr;
 
-        /*
-        printf("Checking buffer of %d byte(s) at address %06x is:\n", buf_size, addr);
-        for (int i = 0; i < buf_size; i++) {
-                printf("%02x ", buf[i]);
-                if (((i-4) % 8) == 7) printf(" ");
-                if (((i-4) % 16) == 15) printf("\n");
-        }
-        printf("\n\n");
-        exit(0);
-        */
-
         printf("Erasing a sector of 4 KiB at address %06x ...\n", addr);
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
@@ -103,17 +92,6 @@ int spi_erase_block(int addr)
         buf[2] = *((char*)&addr + 1);
         buf[3] = *(char*)&addr;
 
-        /*
-        printf("Checking buffer of %d byte(s) at address %06x is:\n", buf_size, addr);
-        for (int i = 0; i < buf_size; i++) {
-                printf("%02x ", buf[i]);
-                if (((i-4) % 8) == 7) printf(" ");
-                if (((i-4) % 16) == 15) printf("\n");
-        }
-        printf("\n\n");
-        exit(0);
-        */
-
         printf("Erasing a block of 64 KiB at address %06x ...\n", addr);
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
@@ -138,48 +116,6 @@ int spi_erase_chip(void)
 
         return ret;
 }
-
-/*
-int spi_read_data(int addr, unsigned char **buf, int count, int bool_output)
-{
-        int ret = 0;
-        //Calculate buffer size. 1 byte for command + 3 bytes for
-        //address + count bytes for how many following bytes to read
-        int buf_size = 1 + ADDRESS_BYTES + count;
-
-        //Reallocate buf to have size = buf_size (+4 bytes)
-        *buf = realloc(*buf, buf_size * sizeof(**buf));
-        if (*buf == NULL) {
-                perror("Realloc error:");
-                exit(5);
-        }
-        memset(*buf, 0xAA, buf_size);       //initialized whole buffer to aa (to easily catch error) FIXME
-
-        //Populate buffer to send
-        (*buf)[0] = READ_DATA;
-        //taking little endian into account
-        (*buf)[1] = *((char*)&addr + 2);
-        (*buf)[2] = *((char*)&addr + 1);
-        (*buf)[3] = *(char*)&addr;
-
-        ret = wiringPiSPIDataRW(SPI_CHANNEL, *buf, buf_size);
-
-        if (bool_output) {
-                printf("Data sequence of %d byte(s) at address %06x is:\n", count, addr);
-                for (int i = 4; i < buf_size; i++) {
-                        printf("%02x ", (*buf)[i]);
-                        if (((i-4) % 8) == 7) printf(" ");
-                        if (((i-4) % 16) == 15) printf("\n");
-                }
-                printf("\n\n");
-        }
-
-#ifdef VERBOSE
-        printf("Read data return: %d\n", ret);
-#endif
-        return ret;
-}
-*/
 
 int spi_read_data(int addr, unsigned char *buf, int count)
 {
@@ -252,25 +188,6 @@ int spi_write_data(int addr, unsigned char **buf, int count, int bool_output)
         (*buf)[2] = *((char*)&addr + 1);
         (*buf)[3] = *(char*)&addr;
 
-        /*
-        printf("Checking buffer of %d byte(s) at address %06x is:\n", count, addr);
-        for (int i = 0; i < buf_size; i++) {
-                printf("%02x ", (*buf)[i]);
-                if (((i-4) % 8) == 7) printf(" ");
-                if (((i-4) % 16) == 15) printf("\n");
-        }
-        printf("\n\n");
-        */
-
-        if (bool_output) {
-                printf("Programming %d byte(s) at address %06x is:\n", count, addr);
-                for (int i = 4; i < buf_size; i++) {
-                        printf("%02x ", (*buf)[i]);
-                        if (((i-4) % 8) == 7) printf(" ");
-                        if (((i-4) % 16) == 15) printf("\n");
-                }
-                printf("\n\n");
-        }
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, *buf, buf_size);
 
