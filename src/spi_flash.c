@@ -14,6 +14,22 @@
 /*
  * Global variables
  */
+/*
+ * Generic functions
+ */
+void print_buffer(unsigned char *buf, int count){
+        int i = 0;
+        for (; i < count; i++) {
+                printf("%02x", buf[i]);
+                if ((i % 16) == 7)
+                        printf("  ");
+                else if ((i % 16) == 15)
+                        printf("\n");
+                else
+                        printf(" ");
+        }
+        if ((i % 16) != 0) printf("\n");
+}
 
 int spi_init()
 {

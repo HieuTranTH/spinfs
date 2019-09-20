@@ -60,6 +60,11 @@
 #define READ_JEDEC_ID           0x9F
 
 /*
+ * Generic functions
+ */
+void print_buffer(unsigned char *buf, int count);
+
+/*
  * Initialize SPI interface
  */
 int spi_init();
