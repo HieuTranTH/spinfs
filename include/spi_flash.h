@@ -36,10 +36,11 @@
  */
 #define MAIN_FLASH_SIZE         8388608 //B = 8 MiB
 #define ADDRESS_BITS            24
-#define ADDRESS_BYTES           ADDRESS_BITS / 8
-#define SECTOR_SIZE             4       //4 KiB
-#define BLOCK_SIZE              64      //64 KiB
+#define ADDRESS_BYTES           (ADDRESS_BITS / 8)
+#define SECTOR_SIZE             (4 * 1024)       //4 KiB
+#define BLOCK_SIZE              (64 * 1024)      //64 KiB
 #define SECTOR_COUNT            2048
+#define PAGE_SIZE               256     //256 B
 #define STARTING_ADDRESS        0x000000
 #define ENDING_ADDRESS          0x7FFFFF
 // Security Registers info
@@ -91,8 +92,3 @@ int spi_write_disable();
 int spi_write_data(int addr, unsigned char **buf, int count, int bool_output);
 
 void dump_flash(const char *name);
-
-/*
- * This function might be obsoleted
- */
-unsigned char *str_hex_converter(unsigned char *s);

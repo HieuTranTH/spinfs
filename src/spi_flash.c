@@ -130,9 +130,13 @@ int spi_read_data(int addr, unsigned char *buf, int count)
                 static_buffer[1] = *((char*)&addr + 2);
                 static_buffer[2] = *((char*)&addr + 1);
                 static_buffer[3] = *(char*)&addr;
-                tr_size = count > BUFFER_MAX_DATA_SIZE ? BUFFER_MAX_TOTAL_SIZE : (count + BUFFER_RESERVED_BYTE);
+                tr_size = count > BUFFER_MAX_DATA_SIZE ?
+                        BUFFER_MAX_TOTAL_SIZE :
+                        (count + BUFFER_RESERVED_BYTE);
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
-                memcpy(buf + i*BUFFER_MAX_DATA_SIZE, static_buffer + BUFFER_RESERVED_BYTE, tr_size - BUFFER_RESERVED_BYTE);
+                memcpy(buf + i*BUFFER_MAX_DATA_SIZE,
+                                static_buffer + BUFFER_RESERVED_BYTE,
+                                tr_size - BUFFER_RESERVED_BYTE);
                 count -= tr_size - BUFFER_RESERVED_BYTE;
                 addr += tr_size - BUFFER_RESERVED_BYTE;
                 i++;
@@ -195,14 +199,6 @@ int spi_write_data(int addr, unsigned char **buf, int count, int bool_output)
         printf("Write data return: %d\n", ret);
 #endif
         return ret;
-}
-
-/*
- * This function might be obsoleted
- */
-unsigned char *str_hex_converter(unsigned char *s)
-{
-        return s;
 }
 
 void dump_flash(const char *name)
