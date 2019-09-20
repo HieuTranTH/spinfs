@@ -89,6 +89,6 @@ int spi_write_enable();
 
 int spi_write_disable();
 
-int spi_write_data(int addr, unsigned char **buf, int count, int bool_output);
+int spi_write_data(int addr, unsigned char *buf, int count);
 
 void dump_flash(const char *name);

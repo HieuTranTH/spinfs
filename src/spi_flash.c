@@ -170,30 +170,34 @@ int spi_write_disable()
         return ret;
 }
 
-int spi_write_data(int addr, unsigned char **buf, int count, int bool_output)
+int spi_write_data(int addr, unsigned char *buf, int count)
 {
         int ret = 0;
-        //Calculate buffer size. 1 byte for command + 3 bytes for
-        //address + count bytes for how many following bytes to write
-        int buf_size = 1 + ADDRESS_BYTES + count;
+        int start_addr = addr;
+        int tr_size = 0;
+        int partial_page_size = 0;
 
-        //Reallocate buf to have size = buf_size (+4 bytes)
-        *buf = realloc(*buf, buf_size * sizeof(**buf));
-        if (*buf == NULL) {
-                perror("Realloc error:");
-                exit(5);
+        while (count > 0) {
+                //Populate buffer to send
+                static_buffer[0] = PAGE_PROGRAM;
+                //taking little endian into account
+                static_buffer[1] = *((char*)&addr + 2);
+                static_buffer[2] = *((char*)&addr + 1);
+                static_buffer[3] = *(char*)&addr;
+                partial_page_size = PAGE_SIZE - (addr & 0x0000FF);
+                tr_size = count > partial_page_size ?
+                        (partial_page_size + BUFFER_RESERVED_BYTE) :
+                        (count + BUFFER_RESERVED_BYTE);
+                memcpy(static_buffer + BUFFER_RESERVED_BYTE,
+                                buf + (addr - start_addr),
+                                tr_size - BUFFER_RESERVED_BYTE);
+                spi_write_enable();
+                ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
+                // TODO polling until BUSY bit is cleared
+                sleep(1);
+                count -= tr_size - BUFFER_RESERVED_BYTE;
+                addr += tr_size - BUFFER_RESERVED_BYTE;
         }
-        memmove((*buf + 4), *buf, count);
-
-        //Populate buffer to send
-        (*buf)[0] = PAGE_PROGRAM;
-        //taking little endian into account
-        (*buf)[1] = *((char*)&addr + 2);
-        (*buf)[2] = *((char*)&addr + 1);
-        (*buf)[3] = *(char*)&addr;
-
-        spi_write_enable();
-        ret = wiringPiSPIDataRW(SPI_CHANNEL, *buf, buf_size);
 
 #ifdef VERBOSE
         printf("Write data return: %d\n", ret);
