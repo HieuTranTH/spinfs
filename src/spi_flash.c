@@ -1,16 +1,5 @@
 #include "spi_flash.h"
 
-//Debug code segments
-/*
-   printf("Checking buffer of %d byte(s) at address %06x is:\n", count, addr);
-   for (int i = 0; i < buf_size; i++) {
-   printf("%02x ", (*buf)[i]);
-   if (((i-4) % 8) == 7) printf(" ");
-   if (((i-4) % 16) == 15) printf("\n");
-   }
-   printf("\n\n");
-   */
-
 /*
  * Global variables
  */
