@@ -33,6 +33,7 @@
 /*
  * NOR Flash info
  * All 4-kB sectors have the pattern XXX000h-XXXFFFh
+ * All 64-kB blocks have the pattern XX0000h-XXFFFFh
  */
 #define MAIN_FLASH_SIZE         8388608 //B = 8 MiB
 #define ADDRESS_BITS            24
@@ -43,15 +44,20 @@
 #define PAGE_SIZE               256     //256 B
 #define STARTING_ADDRESS        0x000000
 #define ENDING_ADDRESS          0x7FFFFF
-// Security Registers info
-// has size of 256-byte each
+/*
+ * Security Registers info
+ * has size of 256-byte each
+ */
 #define SEC_REG_1_START_ADDR    0x001000
 #define SEC_REG_1_END_ADDR      0x0010FF
 #define SEC_REG_2_START_ADDR    0x002000
 #define SEC_REG_2_END_ADDR      0x0020FF
 #define SEC_REG_3_START_ADDR    0x003000
 #define SEC_REG_3_END_ADDR      0x0030FF
-
+/*
+ * Status Registers info
+ */
+#define BUSY_BIT_MASK           1
 /*
  * NOR Flash command macros
  */
@@ -90,5 +96,7 @@ int spi_write_enable();
 int spi_write_disable();
 
 int spi_write_data(int addr, unsigned char *buf, int count);
+
+int spi_read_BUSY_bit(void);
 
 void dump_flash(const char *name);

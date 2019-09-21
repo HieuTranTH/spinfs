@@ -8,7 +8,8 @@ unsigned char static_buffer[BUFFER_MAX_TOTAL_SIZE];
 /*
  * Generic functions
  */
-void print_buffer(unsigned char *buf, int count){
+void print_buffer(unsigned char *buf, int count)
+{
         int i = 0;
         for (; i < count; i++) {
                 printf("%02x", buf[i]);
@@ -203,6 +204,17 @@ int spi_write_data(int addr, unsigned char *buf, int count)
         printf("Write data return: %d\n", ret);
 #endif
         return ret;
+}
+
+int spi_read_BUSY_bit(void)
+{
+        int busy;
+        unsigned char buf[2];
+        //Populate buffer to send
+        buf[0] = READ_STATUS_REGISTER_1;
+        wiringPiSPIDataRW(SPI_CHANNEL, buf, 2);
+        busy = buf[1] & BUSY_BIT_MASK;
+        return busy;
 }
 
 void dump_flash(const char *name)
