@@ -47,72 +47,71 @@ int spi_close(int fd)
         return ret;
 }
 
+/*
+ * All 4-kB sectors have the pattern XXX000h-XXXFFFh
+ */
 int spi_erase_sector(int addr)
 {
         int ret = 0;
         int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
-
-        unsigned char *buf = calloc(buf_size, sizeof(*buf));
-        if (buf == NULL) {
-                perror("Realloc error:");
-                exit(5);
-        }
+        int erase_start = addr & ~(SECTOR_SIZE - 1);
+        int erase_end = addr | (SECTOR_SIZE - 1);
 
         //Populate buffer to send
-        buf[0] = SECTOR_ERASE;
+        static_buffer[0] = SECTOR_ERASE;
         //taking little endian into account
-        buf[1] = *((char*)&addr + 2);
-        buf[2] = *((char*)&addr + 1);
-        buf[3] = *(char*)&addr;
+        static_buffer[1] = *((char*)&addr + 2);
+        static_buffer[2] = *((char*)&addr + 1);
+        static_buffer[3] = *(char*)&addr;
 
-        printf("Erasing a sector of 4 KiB at address %06x ...\n", addr);
+        printf("Erasing a sector of 4 KiB at address %06x (region %06x - %06x) ...\n", addr, erase_start, erase_end);
         spi_write_enable();
-        ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
-        //TODO: poll BUSY bit until erase operation is finished
+        ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, buf_size);
+        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
         printf("Finish erasing!\n");
 
-        free(buf);
         return ret;
 }
 
+/*
+ * All 64-kB blocks have the pattern XX0000h-XXFFFFh
+ */
 int spi_erase_block(int addr)
 {
         int ret = 0;
         int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
-
-        unsigned char *buf = calloc(buf_size, sizeof(*buf));
-        if (buf == NULL) {
-                perror("Realloc error:");
-                exit(5);
-        }
+        int erase_start = addr & ~(BLOCK_SIZE - 1);
+        int erase_end = addr | (BLOCK_SIZE - 1);
 
         //Populate buffer to send
-        buf[0] = BLOCK_ERASE;
+        static_buffer[0] = BLOCK_ERASE;
         //taking little endian into account
-        buf[1] = *((char*)&addr + 2);
-        buf[2] = *((char*)&addr + 1);
-        buf[3] = *(char*)&addr;
+        static_buffer[1] = *((char*)&addr + 2);
+        static_buffer[2] = *((char*)&addr + 1);
+        static_buffer[3] = *(char*)&addr;
 
-        printf("Erasing a block of 64 KiB at address %06x ...\n", addr);
+        printf("Erasing a block of 64 KiB at address %06x (region %06x - %06x) ...\n", addr, erase_start, erase_end);
         spi_write_enable();
-        ret = wiringPiSPIDataRW(SPI_CHANNEL, buf, buf_size);
-        //TODO: poll BUSY bit until erase operation is finished
+        ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, buf_size);
+        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
         printf("Finish erasing!\n");
 
-        free(buf);
         return ret;
 }
 
+/*
+ * Whole chip have the pattern 000000h-7FFFFFh
+ */
 int spi_erase_chip(void)
 {
         int ret = 0;
 
         unsigned char buf = CHIP_ERASE;
 
-        printf("Erasing the whole chip (8 MiB) ...\n");
+        printf("Erasing the whole chip (8 MiB) (region %06x - %06x) ...\n", STARTING_ADDRESS, ENDING_ADDRESS);
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, &buf, 1);
-        //TODO: poll BUSY bit until erase operation is finished
+        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
         printf("Finish erasing!\n");
 
         return ret;
@@ -185,7 +184,7 @@ int spi_write_data(int addr, unsigned char *buf, int count)
                 static_buffer[1] = *((char*)&addr + 2);
                 static_buffer[2] = *((char*)&addr + 1);
                 static_buffer[3] = *(char*)&addr;
-                partial_page_size = PAGE_SIZE - (addr & 0x0000FF);
+                partial_page_size = PAGE_SIZE - (addr & (PAGE_SIZE - 1));
                 tr_size = count > partial_page_size ?
                         (partial_page_size + BUFFER_RESERVED_BYTE) :
                         (count + BUFFER_RESERVED_BYTE);
@@ -194,8 +193,7 @@ int spi_write_data(int addr, unsigned char *buf, int count)
                                 tr_size - BUFFER_RESERVED_BYTE);
                 spi_write_enable();
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
-                // TODO polling until BUSY bit is cleared
-                sleep(1);
+                while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
                 count -= tr_size - BUFFER_RESERVED_BYTE;
                 addr += tr_size - BUFFER_RESERVED_BYTE;
         }
