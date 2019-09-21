@@ -6,3 +6,11 @@ dumping the whole flash always have bit-flip errors until 0x001000 (first 4096 b
 can only read maximum 4092 bytes at once (+4 bytes for command and address = 4096 bytes in total), before return all 0. This is because the default maximum SPI transfer is 4096 bytes with the standard Linux driver.
 https://raspberrypi.stackexchange.com/questions/65595/spi-transfer-fails-with-buffer-size-greater-than-4096
 cat /sys/module/spidev/parameters/bufsiz = 4096
+
+each read BUSY bit function took 0.000021 seconds of CPU time
+programming a page of 256 bytes took 20 polling count to read BUSY bit (0.00042 s)
+erase a sector of 4096 bytes took 2503 polling count to read BUSY bit (0.052563 s)
+erase a block of 65536 bytes took 40881 polling count to read BUSY bit (0.858501 s)
+erase chip of 8388608 bytes took 4754661 polling count to read BUSY bit (99.847881 s)
+
+Reading the erased region right after being erased might give garbage data (give it at least couple seconds to stabilize)
