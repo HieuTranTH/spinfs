@@ -214,43 +214,33 @@ void dump_flash(const char *name)
                 exit(1);
         }
 
-        int transaction_count = 4096;
-        int transaction_size = MAIN_FLASH_SIZE/transaction_count;       /* 2048 bytes */
-        int buffer_size = 1 + ADDRESS_BYTES + transaction_size;         /* 2052 bytes */
-        printf("Transaction size is: %d\n", transaction_size*sizeof(unsigned char));
-        printf("Buffer size is: %d\n", buffer_size*sizeof(unsigned char));
-
-        /* allocate dumping buffer */
-        unsigned char *d_buff = calloc(buffer_size, sizeof(*d_buff));
-        if (d_buff == NULL) {
-                perror("d_buff malloc error:");
-                exit(5);
-        }
+        int transaction_count = MAIN_FLASH_SIZE / BUFFER_MAX_DATA_SIZE;
+        int data_buffer_size = BUFFER_MAX_DATA_SIZE;       /* 2048 bytes */
+        int total_buffer_size = BUFFER_MAX_TOTAL_SIZE;         /* 2052 bytes */
+        printf("Data buffer size is: %d\n", data_buffer_size);
+        printf("Total buffer size is: %d\n", total_buffer_size);
 
         printf("Dumping whole flash to file [%s] ...\n", name);
 
         int addr = 0;
         for (int i = 0; i < transaction_count; i++) {
-                addr = i * transaction_size;
+                addr = i * data_buffer_size;
 
                 //Populate buffer to send
-                d_buff[0] = READ_DATA;
+                static_buffer[0] = READ_DATA;
                 //taking little endian into account
-                d_buff[1] = *((char*)&addr + 2);
-                d_buff[2] = *((char*)&addr + 1);
-                d_buff[3] = *(char*)&addr;
+                static_buffer[1] = *((char*)&addr + 2);
+                static_buffer[2] = *((char*)&addr + 1);
+                static_buffer[3] = *(char*)&addr;
 
-                ret = wiringPiSPIDataRW(SPI_CHANNEL, d_buff, buffer_size);
-                if (ret != buffer_size) {
+                ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, total_buffer_size);
+                if (ret != total_buffer_size) {
                         printf("SPIDataRW failure!\n");
                         exit(1);
                 }
-                //spi_read_data(i*transaction_size, &d_buff, transaction_size, 0);
-                // d_buff is guaranteed to be reallocated with size + 4 bytes
-                fwrite(d_buff+4, sizeof(char), transaction_size, dump_file);
+                fwrite(static_buffer + BUFFER_RESERVED_BYTE, sizeof(char), data_buffer_size, dump_file);
         }
 
         printf("Finish dumping!\n");
         fclose(dump_file);
-        free(d_buff);
 }
