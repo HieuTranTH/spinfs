@@ -9,7 +9,6 @@ void print_usage()
 
 int main(int argc, char *argv[])
 {
-        int addr;
         if (argc > 2) {
                 printf("Too many arguments\n\n");
                 print_usage();
@@ -17,7 +16,8 @@ int main(int argc, char *argv[])
         }
 
         print_usage();
-        addr = strtol(argv[1], NULL, 16);
+
+        int addr = strtol(argv[1], NULL, 16);
 
         int fd_spi = spi_init();
 
