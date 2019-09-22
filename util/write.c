@@ -8,18 +8,8 @@ void print_usage()
         fprintf(stderr, "\n");
 }
 
-char *parse_string_to_hex(char* buf)
-{
-
-        return buf;
-
-}
-
 int main(int argc, char *argv[])
 {
-        int addr, count;
-        unsigned char *buffer;
-        long int strtol_buf = 0;
         if (argc < 3) {
                 printf("Too less arguments\n\n");
                 print_usage();
@@ -27,14 +17,16 @@ int main(int argc, char *argv[])
         }
         print_usage();
 
-        addr = strtol(argv[1], NULL, 16);
-        count = argc - 2;
+        int addr = strtol(argv[1], NULL, 16);
+        int count = argc - 2;
 
-        buffer = calloc(count, sizeof(char));
+        unsigned char *buffer = calloc(count, sizeof(char));
         if (buffer == NULL) {
                 perror("Allocation error:");
                 exit(5);
         }
+
+        long int strtol_buf = 0;
         /*
          * Populate write buffer with the rest of command line parameters
          */
