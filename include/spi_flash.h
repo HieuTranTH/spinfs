@@ -104,5 +104,6 @@ int spi_write_data(int addr, unsigned char *buf, int count);
 int spi_read_BUSY_bit(void);
 
 int spi_read_sec_reg(int addr, unsigned char *buf, int count);
+int spi_write_sec_reg(int addr, unsigned char *buf, int count);
 
 void dump_flash(const char *name);

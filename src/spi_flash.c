@@ -259,6 +259,52 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
         return ret;
 }
 
+int spi_write_sec_reg(int addr, unsigned char *buf, int count)
+{
+        if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_3_START_ADDR >> 8))) {
+                fprintf(stderr, "Address %06x is out of range of Security Registers\n", addr);
+                fprintf(stderr, "Security Register 1 range: %06x - %06x.\n",
+                                SEC_REG_1_START_ADDR, SEC_REG_1_END_ADDR);
+                fprintf(stderr, "Security Register 2 range: %06x - %06x.\n",
+                                SEC_REG_2_START_ADDR, SEC_REG_2_END_ADDR);
+                fprintf(stderr, "Security Register 3 range: %06x - %06x.\n",
+                                SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
+                exit(1);
+        }
+        int ret = 0;
+        int start_addr = addr;
+        int tr_size = 0;
+        int partial_page_size = 0;
+
+        while (count > 0) {
+                //Populate buffer to send
+                static_buffer[0] = PROGRAM_SEC_REG;
+                //taking little endian into account
+                static_buffer[1] = *((char*)&addr + 2);
+                static_buffer[2] = *((char*)&addr + 1);
+                static_buffer[3] = *(char*)&addr;
+                partial_page_size = PAGE_SIZE - (addr & (PAGE_SIZE - 1));
+                tr_size = count > partial_page_size ?
+                        (partial_page_size + BUFFER_RESERVED_BYTE) :
+                        (count + BUFFER_RESERVED_BYTE);
+                memcpy(static_buffer + BUFFER_RESERVED_BYTE,
+                                buf + (addr - start_addr),
+                                tr_size - BUFFER_RESERVED_BYTE);
+                spi_write_enable();
+                ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
+                while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+                count -= tr_size - BUFFER_RESERVED_BYTE;
+                addr += tr_size - BUFFER_RESERVED_BYTE;
+        }
+
+#ifdef VERBOSE
+        printf("Write Security Register return: %d\n", ret);
+#endif
+        return ret;
+}
+
 void dump_flash(const char *name)
 {
         int ret = 0;
