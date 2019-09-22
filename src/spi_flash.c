@@ -23,6 +23,55 @@ void print_buffer(unsigned char *buf, int count)
         if ((i % 16) != 0) printf("\n");
 }
 
+/*
+ * Check for a valid Security Register address
+ */
+int check_sec_reg_addr(int addr)
+{
+        if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_3_START_ADDR >> 8))) {
+                fprintf(stderr, "Address %06x is out of range of Security Registers.\n", addr);
+                fprintf(stderr, "Security Register 1 range: %06x - %06x.\n",
+                                SEC_REG_1_START_ADDR, SEC_REG_1_END_ADDR);
+                fprintf(stderr, "Security Register 2 range: %06x - %06x.\n",
+                                SEC_REG_2_START_ADDR, SEC_REG_2_END_ADDR);
+                fprintf(stderr, "Security Register 3 range: %06x - %06x.\n",
+                                SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
+                exit(1);
+        }
+        return 0;
+}
+
+/*
+ * Check for a valid Main Flash address
+ */
+int check_flash_addr(int addr)
+{
+        if ((addr < STARTING_ADDRESS) || (addr > ENDING_ADDRESS)) {
+                fprintf(stderr, "Address %06x is out of range of Main Flash.\n", addr);
+                fprintf(stderr, "Main Flash range: %06x - %06x.\n",
+                                STARTING_ADDRESS, ENDING_ADDRESS);
+                exit(1);
+        }
+        return 0;
+}
+
+/*
+ * Check for maximum possible byte count when reading and writing
+ */
+int check_max_count(int count, int max_size)
+{
+        if (count > max_size) {
+                fprintf(stderr, "Amount of %d bytes to read/write is more than size of %d bytes.\n", count, max_size);
+                exit(1);
+        }
+        return 0;
+}
+
+/*
+ * SPI NOR flash chip functions
+ */
 int spi_init()
 {
         int fd;
@@ -52,6 +101,8 @@ int spi_close(int fd)
  */
 int spi_erase_sector(int addr)
 {
+        check_flash_addr(addr);
+
         int ret = 0;
         int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
         int erase_start = addr & ~(SECTOR_SIZE - 1);
@@ -78,6 +129,8 @@ int spi_erase_sector(int addr)
  */
 int spi_erase_block(int addr)
 {
+        check_flash_addr(addr);
+
         int ret = 0;
         int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
         int erase_start = addr & ~(BLOCK_SIZE - 1);
@@ -119,6 +172,9 @@ int spi_erase_chip(void)
 
 int spi_read_data(int addr, unsigned char *buf, int count)
 {
+        check_flash_addr(addr);
+        check_max_count(count, MAIN_FLASH_SIZE);
+
         int ret = 0;
         int i = 0;
         int tr_size = 0;
@@ -172,6 +228,9 @@ int spi_write_disable()
 
 int spi_write_data(int addr, unsigned char *buf, int count)
 {
+        check_flash_addr(addr);
+        check_max_count(count, MAIN_FLASH_SIZE);
+
         int ret = 0;
         int start_addr = addr;
         int tr_size = 0;
@@ -215,28 +274,10 @@ int spi_read_BUSY_bit(void)
         return busy;
 }
 
-/*
- * Check for a valid Security Register address
- */
-void check_sec_reg_addr(int addr)
-{
-        if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
-            ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
-            ((addr >> 8) != (SEC_REG_3_START_ADDR >> 8))) {
-                fprintf(stderr, "Address %06x is out of range of Security Registers\n", addr);
-                fprintf(stderr, "Security Register 1 range: %06x - %06x.\n",
-                                SEC_REG_1_START_ADDR, SEC_REG_1_END_ADDR);
-                fprintf(stderr, "Security Register 2 range: %06x - %06x.\n",
-                                SEC_REG_2_START_ADDR, SEC_REG_2_END_ADDR);
-                fprintf(stderr, "Security Register 3 range: %06x - %06x.\n",
-                                SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
-                exit(1);
-        }
-}
-
 int spi_read_sec_reg(int addr, unsigned char *buf, int count)
 {
         check_sec_reg_addr(addr);
+        check_max_count(count, SEC_REG_SIZE);
 
         int ret = 0;
         int i = 0;
@@ -270,6 +311,7 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
 int spi_write_sec_reg(int addr, unsigned char *buf, int count)
 {
         check_sec_reg_addr(addr);
+        check_max_count(count, SEC_REG_SIZE);
 
         int ret = 0;
         int start_addr = addr;

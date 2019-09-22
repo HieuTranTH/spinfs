@@ -81,9 +81,12 @@
  * Generic functions
  */
 void print_buffer(unsigned char *buf, int count);
+int check_sec_reg_addr(int addr);
+int check_flash_addr(int addr);
+int check_max_count(int count, int max_size);
 
 /*
- * Initialize SPI interface
+ * SPI NOR flash chip functions
  */
 int spi_init();
 
