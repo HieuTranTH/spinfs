@@ -5,7 +5,7 @@ void print_usage()
         fprintf(stderr, "####### Read some bytes at a Security Register address #######\n");
         fprintf(stderr, "Format: read [address] [bytes]\n");
         fprintf(stderr, "### address default = 0x001000 ###\n");
-        fprintf(stderr, "### bytes default   = 1        ###\n");
+        fprintf(stderr, "### bytes default   = 256      ###\n");
         fprintf(stderr, "\n");
 }
 
@@ -22,12 +22,12 @@ int main(int argc, char *argv[])
                 count = atoi(argv[2]);
         }
         else if (argc == 2) {
-                addr = 0x001000;
-                count = atoi(argv[1]);
+                addr = strtol(argv[1], NULL, 16);
+                count = 256;
         }
         else if (argc == 1) {
                 addr = 0x001000;
-                count = 1;
+                count = 256;
         }
         print_usage();
 
