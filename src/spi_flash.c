@@ -195,6 +195,10 @@ int spi_read_data(int addr, unsigned char *buf, int count)
                                 tr_size - BUFFER_RESERVED_BYTE);
                 count -= tr_size - BUFFER_RESERVED_BYTE;
                 addr += tr_size - BUFFER_RESERVED_BYTE;
+                // Check if next address has passed the memory region of the Main Flash
+                // If yes, then move it back inside the region
+                if (addr > ENDING_ADDRESS)
+                        addr = addr - MAIN_FLASH_SIZE;
                 i++;
         }
 
