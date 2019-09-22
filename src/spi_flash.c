@@ -284,6 +284,7 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
         check_max_count(count, SEC_REG_SIZE);
 
         int ret = 0;
+        int start_addr = addr;
         int i = 0;
         int tr_size = 0;
 
@@ -295,7 +296,7 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
                 static_buffer[2] = *((char*)&addr + 1);
                 static_buffer[3] = *(char*)&addr;
                 tr_size = count > BUFFER_MAX_DATA_SIZE ?
-                        BUFFER_MAX_TOTAL_SIZE :
+                        BUFFER_MAX_TOTAL_SIZE + 1 :
                         (count + BUFFER_RESERVED_BYTE + 1);     //Extra byte for Dummy Cycle in reading Security Register
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
                 memcpy(buf + i*BUFFER_MAX_DATA_SIZE,
@@ -303,6 +304,10 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
                                 tr_size - BUFFER_RESERVED_BYTE - 1);
                 count -= tr_size - BUFFER_RESERVED_BYTE - 1;
                 addr += tr_size - BUFFER_RESERVED_BYTE - 1;
+                // Check if next address has passed the memory region of the current Security Register
+                // If yes, then move it back inside the region
+                if (addr > (start_addr | (SEC_REG_SIZE - 1)))
+                        addr = addr - SEC_REG_SIZE;
                 i++;
         }
 
