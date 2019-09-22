@@ -215,7 +215,10 @@ int spi_read_BUSY_bit(void)
         return busy;
 }
 
-int spi_read_sec_reg(int addr, unsigned char *buf, int count)
+/*
+ * Check for a valid Security Register address
+ */
+void check_sec_reg_addr(int addr)
 {
         if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
             ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
@@ -229,6 +232,11 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
                                 SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
                 exit(1);
         }
+}
+
+int spi_read_sec_reg(int addr, unsigned char *buf, int count)
+{
+        check_sec_reg_addr(addr);
 
         int ret = 0;
         int i = 0;
@@ -261,18 +269,8 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
 
 int spi_write_sec_reg(int addr, unsigned char *buf, int count)
 {
-        if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
-            ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
-            ((addr >> 8) != (SEC_REG_3_START_ADDR >> 8))) {
-                fprintf(stderr, "Address %06x is out of range of Security Registers\n", addr);
-                fprintf(stderr, "Security Register 1 range: %06x - %06x.\n",
-                                SEC_REG_1_START_ADDR, SEC_REG_1_END_ADDR);
-                fprintf(stderr, "Security Register 2 range: %06x - %06x.\n",
-                                SEC_REG_2_START_ADDR, SEC_REG_2_END_ADDR);
-                fprintf(stderr, "Security Register 3 range: %06x - %06x.\n",
-                                SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
-                exit(1);
-        }
+        check_sec_reg_addr(addr);
+
         int ret = 0;
         int start_addr = addr;
         int tr_size = 0;
@@ -307,21 +305,8 @@ int spi_write_sec_reg(int addr, unsigned char *buf, int count)
 
 int spi_erase_sec_reg(int addr)
 {
-        /*
-         * Check for a valid Security Register address
-         */
-        if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
-            ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
-            ((addr >> 8) != (SEC_REG_3_START_ADDR >> 8))) {
-                fprintf(stderr, "Address %06x is out of range of Security Registers\n", addr);
-                fprintf(stderr, "Security Register 1 range: %06x - %06x.\n",
-                                SEC_REG_1_START_ADDR, SEC_REG_1_END_ADDR);
-                fprintf(stderr, "Security Register 2 range: %06x - %06x.\n",
-                                SEC_REG_2_START_ADDR, SEC_REG_2_END_ADDR);
-                fprintf(stderr, "Security Register 3 range: %06x - %06x.\n",
-                                SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
-                exit(1);
-        }
+        check_sec_reg_addr(addr);
+
         int ret = 0;
         int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
         int erase_start = addr & ~(SEC_REG_SIZE - 1);
