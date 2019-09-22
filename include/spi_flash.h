@@ -48,6 +48,7 @@
  * Security Registers info
  * has size of 256-byte each
  */
+#define SEC_REG_SIZE            256     //256 B
 #define SEC_REG_1_START_ADDR    0x001000
 #define SEC_REG_1_END_ADDR      0x0010FF
 #define SEC_REG_2_START_ADDR    0x002000
@@ -72,6 +73,9 @@
 #define CHIP_ERASE              0xC7    //8 MiB
 #define READ_DATA               0x03
 #define READ_JEDEC_ID           0x9F
+#define ERASE_SEC_REG           0x44
+#define PROGRAM_SEC_REG         0x42
+#define READ_SEC_REG            0x48
 
 /*
  * Generic functions
@@ -98,5 +102,7 @@ int spi_write_disable();
 int spi_write_data(int addr, unsigned char *buf, int count);
 
 int spi_read_BUSY_bit(void);
+
+int spi_read_sec_reg(int addr, unsigned char *buf, int count);
 
 void dump_flash(const char *name);

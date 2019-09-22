@@ -120,7 +120,7 @@ int spi_erase_chip(void)
 int spi_read_data(int addr, unsigned char *buf, int count)
 {
         int ret = 0;
-        int i = 0 ;
+        int i = 0;
         int tr_size = 0;
 
         while (count > 0) {
@@ -213,6 +213,50 @@ int spi_read_BUSY_bit(void)
         wiringPiSPIDataRW(SPI_CHANNEL, buf, 2);
         busy = buf[1] & BUSY_BIT_MASK;
         return busy;
+}
+
+int spi_read_sec_reg(int addr, unsigned char *buf, int count)
+{
+        if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_3_START_ADDR >> 8))) {
+                fprintf(stderr, "Address %06x is out of range of Security Registers\n", addr);
+                fprintf(stderr, "Security Register 1 range: %06x - %06x.\n",
+                                SEC_REG_1_START_ADDR, SEC_REG_1_END_ADDR);
+                fprintf(stderr, "Security Register 2 range: %06x - %06x.\n",
+                                SEC_REG_2_START_ADDR, SEC_REG_2_END_ADDR);
+                fprintf(stderr, "Security Register 3 range: %06x - %06x.\n",
+                                SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
+                exit(1);
+        }
+
+        int ret = 0;
+        int i = 0;
+        int tr_size = 0;
+
+        while (count > 0) {
+                //Populate buffer to send
+                static_buffer[0] = READ_SEC_REG;
+                //taking little endian into account
+                static_buffer[1] = *((char*)&addr + 2);
+                static_buffer[2] = *((char*)&addr + 1);
+                static_buffer[3] = *(char*)&addr;
+                tr_size = count > BUFFER_MAX_DATA_SIZE ?
+                        BUFFER_MAX_TOTAL_SIZE :
+                        (count + BUFFER_RESERVED_BYTE + 1);     //Extra byte for Dummy Cycle in reading Security Register
+                ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
+                memcpy(buf + i*BUFFER_MAX_DATA_SIZE,
+                                static_buffer + BUFFER_RESERVED_BYTE + 1,
+                                tr_size - BUFFER_RESERVED_BYTE - 1);
+                count -= tr_size - BUFFER_RESERVED_BYTE - 1;
+                addr += tr_size - BUFFER_RESERVED_BYTE - 1;
+                i++;
+        }
+
+#ifdef VERBOSE
+        printf("Read Security Register return: %d\n", ret);
+#endif
+        return ret;
 }
 
 void dump_flash(const char *name)
