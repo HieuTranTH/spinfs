@@ -295,9 +295,7 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
                 static_buffer[1] = *((char*)&addr + 2);
                 static_buffer[2] = *((char*)&addr + 1);
                 static_buffer[3] = *(char*)&addr;
-                tr_size = count > BUFFER_MAX_DATA_SIZE ?
-                        BUFFER_MAX_TOTAL_SIZE + 1 :
-                        (count + BUFFER_RESERVED_BYTE + 1);     //Extra byte for Dummy Cycle in reading Security Register
+                tr_size = count + BUFFER_RESERVED_BYTE + 1;     //Extra byte for Dummy Cycle in reading Security Register
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
                 memcpy(buf + i*BUFFER_MAX_DATA_SIZE,
                                 static_buffer + BUFFER_RESERVED_BYTE + 1,
