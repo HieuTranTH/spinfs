@@ -105,5 +105,6 @@ int spi_read_BUSY_bit(void);
 
 int spi_read_sec_reg(int addr, unsigned char *buf, int count);
 int spi_write_sec_reg(int addr, unsigned char *buf, int count);
+int spi_erase_sec_reg(int addr);
 
 void dump_flash(const char *name);

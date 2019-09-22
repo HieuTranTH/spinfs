@@ -305,6 +305,44 @@ int spi_write_sec_reg(int addr, unsigned char *buf, int count)
         return ret;
 }
 
+int spi_erase_sec_reg(int addr)
+{
+        /*
+         * Check for a valid Security Register address
+         */
+        if (((addr >> 8) != (SEC_REG_1_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_2_START_ADDR >> 8)) &&
+            ((addr >> 8) != (SEC_REG_3_START_ADDR >> 8))) {
+                fprintf(stderr, "Address %06x is out of range of Security Registers\n", addr);
+                fprintf(stderr, "Security Register 1 range: %06x - %06x.\n",
+                                SEC_REG_1_START_ADDR, SEC_REG_1_END_ADDR);
+                fprintf(stderr, "Security Register 2 range: %06x - %06x.\n",
+                                SEC_REG_2_START_ADDR, SEC_REG_2_END_ADDR);
+                fprintf(stderr, "Security Register 3 range: %06x - %06x.\n",
+                                SEC_REG_3_START_ADDR, SEC_REG_3_END_ADDR);
+                exit(1);
+        }
+        int ret = 0;
+        int buf_size = BUFFER_RESERVED_BYTE;               // buffer size for erase operation always is contant
+        int erase_start = addr & ~(SEC_REG_SIZE - 1);
+        int erase_end = addr | (SEC_REG_SIZE - 1);
+
+        //Populate buffer to send
+        static_buffer[0] = ERASE_SEC_REG;
+        //taking little endian into account
+        static_buffer[1] = *((char*)&addr + 2);
+        static_buffer[2] = *((char*)&addr + 1);
+        static_buffer[3] = *(char*)&addr;
+
+        printf("Erasing Security Register at address %06x (region %06x - %06x) ...\n", addr, erase_start, erase_end);
+        spi_write_enable();
+        ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, buf_size);
+        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+        printf("Finish erasing!\n");
+
+        return ret;
+}
+
 void dump_flash(const char *name)
 {
         int ret = 0;
