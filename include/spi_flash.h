@@ -19,8 +19,10 @@
  * SPI macros
  */
 #define SPI_CHANNEL 0  // CE0
-//#define SPI_SPEED 25000000  // ~20 MHz?
+//#define SPI_SPEED 25000000  // ~20 MHz?       //Slow down the clock if using Valgrind
+#ifndef SPI_SPEED
 #define SPI_SPEED 50000000  // ~40 MHz?
+#endif
 #define SPI_MODE 3  // Mode 3: CPOL=1, CPHA=1
 /*
  * Default Linux SPI bufsize is 4096, but first 4 bytes will be used for

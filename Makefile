@@ -4,6 +4,10 @@ CC = gcc
 CFLAGS = -Wall -Iinclude -g
 LDLIBS = -lwiringPi
 
+ifneq ($(VALGRIND),)
+CFLAGS += -DSPI_SPEED=25000000
+endif
+
 ALL_UTILS = dump_flash erase_block erase_chip erase_sector readID read write \
 			read_security write_security erase_security
 
