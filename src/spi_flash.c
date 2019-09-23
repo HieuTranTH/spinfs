@@ -285,29 +285,24 @@ int spi_read_sec_reg(int addr, unsigned char *buf, int count)
 
         int ret = 0;
         int start_addr = addr;
-        int i = 0;
         int tr_size = 0;
 
-        while (count > 0) {
-                //Populate buffer to send
-                static_buffer[0] = READ_SEC_REG;
-                //taking little endian into account
-                static_buffer[1] = *((char*)&addr + 2);
-                static_buffer[2] = *((char*)&addr + 1);
-                static_buffer[3] = *(char*)&addr;
-                tr_size = count + BUFFER_RESERVED_BYTE + 1;     //Extra byte for Dummy Cycle in reading Security Register
-                ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
-                memcpy(buf + i*BUFFER_MAX_DATA_SIZE,
-                                static_buffer + BUFFER_RESERVED_BYTE + 1,
-                                tr_size - BUFFER_RESERVED_BYTE - 1);
-                count -= tr_size - BUFFER_RESERVED_BYTE - 1;
-                addr += tr_size - BUFFER_RESERVED_BYTE - 1;
-                // Check if next address has passed the memory region of the current Security Register
-                // If yes, then move it back inside the region
-                if (addr > (start_addr | (SEC_REG_SIZE - 1)))
-                        addr = addr - SEC_REG_SIZE;
-                i++;
-        }
+        //Populate buffer to send
+        static_buffer[0] = READ_SEC_REG;
+        //taking little endian into account
+        static_buffer[1] = *((char*)&addr + 2);
+        static_buffer[2] = *((char*)&addr + 1);
+        static_buffer[3] = *(char*)&addr;
+        tr_size = count + BUFFER_RESERVED_BYTE + 1;     //Extra byte for Dummy Cycle in reading Security Register
+                                                //This needs guarantee that tr_size <= static_buffer size (or BUFFER_MAX_TOTAL_SIZE)
+                                                //which is what check_max_count does if SEC_REG_SIZE < BUFFER_MAX_DATA_SIZE
+        ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
+        memcpy(buf, static_buffer + BUFFER_RESERVED_BYTE + 1, count);
+        addr += count;
+        // Check if next address has passed the memory region of the current Security Register
+        // If yes, then move it back inside the region
+        if (addr > (start_addr | (SEC_REG_SIZE - 1)))
+                addr = addr - SEC_REG_SIZE;
 
 #ifdef VERBOSE
         printf("Read Security Register return: %d\n", ret);
