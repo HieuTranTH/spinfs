@@ -236,7 +236,7 @@ int spi_write_data(int addr, unsigned char *buf, int count)
         check_max_count(count, MAIN_FLASH_SIZE);
 
         int ret = 0;
-        int start_addr = addr;
+        int buf_offset = 0;
         int tr_size = 0;
         int partial_page_size = 0;
 
@@ -248,17 +248,21 @@ int spi_write_data(int addr, unsigned char *buf, int count)
                 static_buffer[2] = *((char*)&addr + 1);
                 static_buffer[3] = *(char*)&addr;
                 partial_page_size = PAGE_SIZE - (addr & (PAGE_SIZE - 1));
-                tr_size = count > partial_page_size ?
-                        (partial_page_size + BUFFER_RESERVED_BYTE) :
-                        (count + BUFFER_RESERVED_BYTE);
+                tr_size = (count > partial_page_size ? partial_page_size : count)
+                          + BUFFER_RESERVED_BYTE;
                 memcpy(static_buffer + BUFFER_RESERVED_BYTE,
-                                buf + (addr - start_addr),
+                                buf + buf_offset,
                                 tr_size - BUFFER_RESERVED_BYTE);
                 spi_write_enable();
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
                 while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
                 count -= tr_size - BUFFER_RESERVED_BYTE;
+                buf_offset += tr_size - BUFFER_RESERVED_BYTE;
                 addr += tr_size - BUFFER_RESERVED_BYTE;
+                // Check if next address has passed the memory region of the Main Flash
+                // If yes, then move it back inside the region
+                if (addr > ENDING_ADDRESS)
+                        addr = addr - MAIN_FLASH_SIZE;
         }
 
 #ifdef VERBOSE
@@ -317,6 +321,7 @@ int spi_write_sec_reg(int addr, unsigned char *buf, int count)
 
         int ret = 0;
         int start_addr = addr;
+        int buf_offset = 0;
         int tr_size = 0;
         int partial_page_size = 0;
 
@@ -328,17 +333,21 @@ int spi_write_sec_reg(int addr, unsigned char *buf, int count)
                 static_buffer[2] = *((char*)&addr + 1);
                 static_buffer[3] = *(char*)&addr;
                 partial_page_size = PAGE_SIZE - (addr & (PAGE_SIZE - 1));
-                tr_size = count > partial_page_size ?
-                        (partial_page_size + BUFFER_RESERVED_BYTE) :
-                        (count + BUFFER_RESERVED_BYTE);
+                tr_size = (count > partial_page_size ? partial_page_size : count)
+                          + BUFFER_RESERVED_BYTE;
                 memcpy(static_buffer + BUFFER_RESERVED_BYTE,
-                                buf + (addr - start_addr),
+                                buf + buf_offset,
                                 tr_size - BUFFER_RESERVED_BYTE);
                 spi_write_enable();
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
                 while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
                 count -= tr_size - BUFFER_RESERVED_BYTE;
+                buf_offset += tr_size - BUFFER_RESERVED_BYTE;
                 addr += tr_size - BUFFER_RESERVED_BYTE;
+                // Check if next address has passed the memory region of the current Security Register
+                // If yes, then move it back inside the region
+                if (addr > (start_addr | (SEC_REG_SIZE - 1)))
+                        addr = addr - SEC_REG_SIZE;
         }
 
 #ifdef VERBOSE
