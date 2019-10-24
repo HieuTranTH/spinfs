@@ -14,3 +14,9 @@ erase a block of 65536 bytes took 40881 polling count to read BUSY bit (0.858501
 erase chip of 8388608 bytes took 4754661 polling count to read BUSY bit (99.847881 s)
 
 Reading the erased region right after being erased might give garbage data (give it at least couple seconds to stabilize)
+
+reading invalid security register address has undefined behavior. Read 0x003XYY for example will have data of at address 0x0030YY. However, reading 0x00ZXXX where Z is not 1,2, or 3 will have garbage data.
+Same behavior applies to Main Flash when reading invalid address (above 0x7fffff).
+
+Valgrind runs programs in emulated environment, so it cannot keep up with SPI speed of 50000000 (due to Valgrind overhead). Reduce SPI clock speed by half to make valgrind work properly.
+make VALGRIND=y

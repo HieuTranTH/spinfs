@@ -12,11 +12,12 @@ Directory (or Folder in Windows terms) is the way file system organize multiple 
 File systems are usually packed within Operating Systems and each Operating System has its own implementation of file systems. Depending on the underlying physical storage medium, purpose when storing data and host Operating System, file system type will be chosen for individual media. For instance, CDs use ISO 9660 file system, hard disks and managed flash drive like SSD depend on what is available from the OS, Microsoft Windows utilizes NTFS while MacOS takes advantage of Apple's APFS and Linux has ext4 developed by the Open-source Community.
 
 Terminologies related to file systems
-Partitions:
-Volume:
-Superblock
-Inode
-Metadata
+(INTEGRITY libguide p.96 file system terms: file system implementation, file system instance, metadata, mount, partition, root file system)
+Partitions: are divisions or parts of a real hard disk drive. A partition is really only a logical separation from the whole drive, but it appears as though the division creates multiple physical drives, which can be managed separately. A partition is a logically independent section of a head disk drive that contains a single type of filesystem.
+Volume: refer to a disk or partition that has been initialized with a file system.
+Metadata: is data information that provides knowledge and description about other data. For example, creation time of a file is a valuable information about a file, but it is not part of the data stored in the file.
+Superblock: a small area on a volume where characteristics of the filesystem currently residing on that volume are stored. The information a superblock usually contains are volume size, block size, layout and counts of empty and filled blocks, with other file system specific metadata such as size and location of inode tables, disk block map and usage information.
+Inode: is a data structure of a file system implementation (usually on Unix-like operating systems) where all the information about a file except its name and its actual data are stored. The i-node also provides the connection to the physical locations on disk having the file's data.
 
 Basic File System Operations
 Initialization:
@@ -42,32 +43,143 @@ As mentioned above, directory is basical a file where its data is the name list 
 In summary, file system is a program that enable Operating System to store, retrieve and manipulate data on persistent storage device, data here is usually stored as content of files and organized into directories. Each file system targets a specific type of storage on a specific Operating System.
 
 Different type of existing FS
-Traditional FS
+Traditional FS (block based file system) (conventional)
+Each file system has its own design and implementation that serve a specific purpose with targeted hardwares including host systems and the storage devices it will be used on. However, the design below tend to be generic and provide adaquate performance with many features for user-friendliness and security. Most of the idea about superblock, block bitnmap, i-node bitmap, direct, indirect-blocks has been used in file systems such as BSD FFS, BFS, and FAT.
 How do they store data in block device (inode, direct, indirect blocks)
+Essentially, there is a known place on a storage device to store the superblock which is the most important block to the file system. Suitable choices for this place are often the first or the last block of the partition but first block are usually chosen for the ease of seeking it (no need to find the size of the partition to calculate the last block number). In this superblock, there are block size, total number of blocks, number of used blocks, dirty bit flag, and address of i-node of the root directory. Withouth this reference from superblock to the root of the hierarchy of all files and directories, the file system would have no way to find any files on the volume.
+Bitmap
+Following blocks after the superblock can be occupied for bitmap scheme, which is an approach to managing free space on a disk. The bitmap scheme represent each disk block as 1 bit, thus binary value of 0 or 1 in a bit can indicate vacancy status of a block whether it contains invalid data that the file system can freely write to it or it is not emptied and should not be overwritten. The number of blocks are used for bitmapping is totally based on the size of the partition and file system block size. Each byte consists of 8 bits, therefore the bitmap for 8GB disk with 1K blocks would requires 1MB of space, or 1024 blocks in this case.
+I-node
+Beside metainformation about the file such as the size of a file, access permission information, its creation and modificaton times, i-node data structure needs to keep track of which locations on disk are belongs to this i-node data stream. This basic structure is the fundamental building block of how data is stored in a file on a file system.
+Core of an i-node: the data stream.
+Traditional approach for linking on disk addresses to logical file offsets is storing a list of blocks directly inside i-node, which is called direct blocks. Each entry in this list is a physical block address of the storage device, and since the size of an i-node structure is limited, it limits the amount of data the file can contain. Generally, about 4 to 16 block addresses can be stored directly in i-node, which means maximum size of a file can be is 16KB with 1KB file system block size. To address this space constraint, indirect block can be used. Rather than having direct reference to a physical address that has the file data, i-node can carry block address of this indirectly block. While data block contains user data, indirect block has pointers to other data blocks that do have user data in them, which make up the whole stream bytes of file data when combining together. Therefore, one disk block address can map a much larger number of data blocks, instead of mapping 1 by 1 with direct block address.
+Indirec blocks help increasing the maximum data size in a file an i-node can keep track of, however, it is not enough to locate the data blocks of a file much more than a few hundred kilobytes in size. To overcome this issue to allow an even bigger file, indirect block technique can be applied a second time, making double-indirect blocks. The same concept and basic idea still hold true for double-indirect block as indirect block. Each double-indirect block address that i-node contains points to a block on disk whose content is more pointers to indirect blocks and repectively refers to exponentially amount of actual data blocks constructing a file.
+
 Advantages
+robust, straight-forword easy to implement
+Traditional design of file systems is straight-forward, there are not many abtraction layers between how users see files and directories on computer screen and how file system hide its implementation details to store those data on disk. Basically, data in a file is broken down into many chunks of blocks and file i-node is responsible for keeping track of location of those blocks. On top of that, file system superblock will always have connection to the address where that i-node resides and return that information whenever there is a request to read/write that file. Subsequently, when accessing a file, in addition to disk operations of accessing directly the blocks having actual file data, there will be few more reads to superblock and other blocks to search for the i-node and eventually leading to the data blocks. These additional reads are called file system overhead, and because of the simplicity in the design, traditional file systems performance suffer little from it and tend to be robust since less complexity means less bugs and corruptions. When putting more optimization features such as bigger such as block size and caching, performance can even be pushed further.
 
 Disadvantage
+Writing any new data to the disk can require updating file system housekeeping data structure, which are superblock and bitmap, and having these areas to get frequently updated is a big disadvantage in this design. It really depends on the underlying storage device, continually changing the content in a part of a hard disk drive might not be a problem, but doing the same thing in modern flash drive is not at all recommended due to the drive's characteristics and operations involving in writing data to a memory block which will be discussed in the following section about "Flash storage".
+One key disadvantage of flash memory is that it can only endure a relatively small number of write cycles in a specific block.
+
+Flash memory overview
+#TODO many plagiarism
+Flash memory is an electronic non-volatile computer memory storage medium that can be electrically erased and reprogrammed. Flash storage device is the successor of hard disk drive, which use mechanical movement to read and write memory <todo>.
+Non-volatile storage technology that does not require power to retain data
+Was invented by Toshiba in 1980 based on EEPROM technology
+Toshiba introduced NAND Flash for the first time in late 80s
+Individual flash memory cell consisting of a FET transistor and floating gate
+Floating gate is used to store cell's value
+No electrons on the floating gate -> cell is in the erased ("1") state and has a low "turn on" threshold voltage (Vth)
+Electrons on the floating gate increases Vth voltage -> Cell is in programmed ("0") state
+Write operation:
+A voltage aplied to the control gate causes a tunnel current to flow through the oxide layer, thereby injecting electrons into the floating gate
+Erase operation:
+A voltage applied to the silicon substrate releases the electrons accumulated at the floating gate
 
 How does flash storage device works
+each cell > floating trnasistor > 2 charge states > 1 binary (1 when no charge, 0 when) > SLC > more than 2 charge state > more than 1 bit encoded per floating gate > MLC more than 1 bit per cell > smaller tolerance (increase Vth voltage) > reading > negative charge on floating gate screen off some positiv charge on control gate > need more charge to reach threshold > current vs gate to source voltage plot > aplly intermidiate voltage in between 2 threshold voltage and measure the current > same thing apply for mlc flash + plot > writing (moving charges to and from the floating gate) > program (inject electrons into the floating gate '1') > erase (release electron accumulated at the floating gate '0') > 2 methods (not go into details) > limitation
+Flash memory stores information in an array of memory cells made from floating-gate transistors. each cell stores only one bit of information in single-lvel cell (SLC) devices, while multi-level cell (MLC) devices, TCL, QLC, PLC can store more than 1 bit per cell.
+Flash memory is based on floating gate transistors, which is a variant of MOSFET with one small change. There is an extra gate that is added between the control gate and the body, this extra gate is known as the floating gate is electrically isolated. It had no electrical contacts which means that any charges put on the floating gate will stay there for a long time (for years in fact, and that's what allow flash storage to store data without the need of power source.
+A flash memory devices has all the data encoded as a bunch of charges on these floating gates.
+  
+
 
 Flash limitation in hardware
+Wearing
+Both writing methods (quantum tuneling and hot injection) involve high voltages and high electric fields and this limits the number of times you can write to the floating gate transistor. What happen is that the electrons gain a lot of energy and dissipate that energy by colliding with the oxide layer lattice and this damage builds up over time. Oxide insulator wears out over time causing electron leakage that alters floating gate charge. Defined Vth limits are no more accurate and value detected wrongly. Once you've done enough writes, the damage is great enought taht the device becomes unusable.
+SLC 100,000 writes, MLC 1000 - 10,000. That's small is  because of the lower tolerance is involded for mlc so it takes less wear to make MLC unsuable.
+Because of the limited number of writes flash flash memory needs to have some sort of wear leveling.
+If the wear leveling wasn't there you might end up writing to the same area to the same block of memory over and over again and make that block of memory unusable very quickly, so we're leveling everns out the load so you don't get one region of memory wearing out quickly.
 
 
+Managed flash vs. Unmanaged flash
+Managed flash
+SSD, SD, eMMC, UFS found in PC, laptop, mobile phones
+There is a controller on the device to do wear leveling ... Al handled by memory internally.
 
+Unmanaged flash
+Raw NAND/NOR chips, mostly used for embeded devices with limited resources.
+There is no such thing as controller on the device. All memory management is on host side. Therefore, when implements file system targeting to use for such devices, wear leveling needs to be taken into consideration somehow that data will be written evenly to all blocks of the flash. If design file system with traditional approach, first few blocks of the flash where superblock and bitmap are resided will have much more erased/program cycles than any other blocks.
+Below graph shows an example when using FAT file system (which uses some beginning blocks for storing file system metadata, i-node table in this case) directly on a raw flash without wear leveling, which should always be avoided.
+<pic>
+To sum up, traditional file system is not a good solution to manage files on raw flash because of obvious reason, they were not designed to use with raw flashes. Therefore, new approaches need to be think of to tackle the natural characteristics of flash memory.
 
 My FS
+SpinFS (abbr for SPI NOR File System)
+Storage format
+spinfs is a log-structured file system
+Differentiate from traditional block based file system that storage location is bound to a piece of data, log-structured file system make use of the entire storage for a circular log which is appended with every change made to the filesystem.
+Unlike their block based coutnerpart, which has i-node blocks representing a file or directory scatter around the whole disk having an address pointer pointing to the blocks that have the actual data which also scatter around, this circular structure consists of multiple nodes, each representing a file or directory and the data inside it.
+
+Node data structure
+The structure starts with a common header containing the i-node number of that node and all metainformation for that i-node, and may also carry a variable amount of data.
+In spinfs, file and directory are treated equally. Directory is theoretically a file, whose data is a list of file names which are the name of the files  and sub-directories are under this parent directory. Moreover, both of them share some similarities in their natural information. For example, both file and directory must have name, i-node number referring to it, its creation, modification time, size of it, and who is the owner and who can access. From these matching statistics of file and directory, spinfs is considered to have only one raw_node data structure that can be used for both of them, which minimize the complexity of its design.
+The spinfs-node structure is
+<node structure>
+Spinfs node is very similar to conventional i-node that it contains the metainformation about entities that live in the file system with only one exception that instead of storing addresses of that entity's data blocks which live somewhere else, data part is included directly inside spinfs node structure right after metadata part.
+Looking at raw_node structure, it is clear to see some basic file information spinfs supports. First of all, maximum file name length is 32 one-byte ASCII characters, which is said to be the minimum in an interactive system <p18. ref1>.
+The next field, inode_num, is self-explain, it is the i-node number of file or directory this raw_node is referring to. In spinfs, 32-bit unsigned integer value is used for storing i-node number, allowing for 4 milliard files to be existed on the filesystem. However, considering that raw flashs are usually appeared in embeded systems, this maximum amount of files are unlikely to be reached due to the simplicity and often single, straight forward application these kind of systems provide <ref to avarage number of files in a filesystem>. One thing to noted that i-node numbers are never reused in spinfs. In case when files are deleted, new files will always have the next highhest available i-node number rather than having an obsoleted number from deleted files.
+The uid/gid fields record ownership information about a file. Spinfs is designed to be run from on Linux host machines, thus it follows convention that was specified in POSIX that any file must have corresponding user id and group id which this file belongs to <ref to POSIX>. Combining with mode field, the file system can provide file access permission check. By following POSIX specification, file permission model in spinfs consists of user, group and "other" classes and three distinct operations; read, write and execute; these classes can do to a file system entity. The checking is done by comparing current logged in user with uid and gid fields to determine which class file access permission will be checked, then mode field will tell if the user can continue doing what he/she intends to do with the file, either read, write to it or execute an executable file. In addition to file access permission, spinfs also stores information about whether this raw_node is a regular file or a directory along in this 32-bit value. (INTEGRITY libguide p.96 file system terms)
+flags (obsolete, deleted)
+Moving on to the next flags field, it is a record of various bits of i-node states, and at the moment there is only deleted state beside normal state of an i-node in spinfs.
+Spinfs maintains some useful timely aspect of files known as creation time and last modified time of a file, and with these information users can easily query for files with a particular timestamp in mind. Unlike others Unix file systems, spinfs does not attempt to support last accessed time simply because this information is too expensive to maintain (every access to a file will need to update its node structure, and in a log-structured file system like spinfs, this means the whole new node with all file content will be written to the flash even each time a small part of the file is read, which eventually wears the flash extremely fast) over the small amount of use that it gets.
+The parent_inode field is effectively the i-node number of the parent directory of this file/directory. With parent i-node stored directly inside a node structure, traversing backward the filesystem tree can be made efficiently to reconstructing a full path name of the file, while without it, the only way to know the full path name of an i-node is having that information in memory all the time while the file is opened.
+The version field is a important information for any nodes because it is where spinfs maintains historical ordering for each i-node. As the spirit of spinfs is a log-structured file system, every update to a file is actually writing a new file to storage file rather than modifying old data blocks, the file system needs a way to identify which is the most recent version of a file among many nodes referring to the same file. It is exactly what this field in raw_node structure is responsible for, each new  node is written with a version higher than all previous node belonging to the same i-node. Similar to inode_num, version is an 32-bit unsigned integer, hence there is a ceiling limit for a number of nodes to be written for each node during the whole flash chip's lifetime, however, this amount of time is limited so this limitation is deemed to be acceptable.
+The data_size field indicates how many bytes is the size of raw_node data part, which essentially is the size of a file in case this node is a regular file node.
+The last field of this data structure is a flexible array member, data[], where the actual data stream of a file is located. Since files' size vary, length of data[] array is determined by data_size field, thus the starting address of the data is always presented in the node structure while the last address can be easily calculated for the file system to know where is the next consecutive node.
+After some considerations and updates to the design of spinfs, the author decided to implement checksum for each node to improve integrity of the file system. In C programming, flexible array member has to be the last data member of a struct <C99 ref> so a new field to store checksum cannot be added to the end of the current data structure, thus leaving the author of spinfs no choice other than having it in data[] array right after the actual data of the node. Consequently, this increases the size of each node by the size of the checksum, ?? bytes for SHA1 sum in this case, at the end and data_size is no longer reflect the actual data size of a file if raw_node is a regular file node but the actual size plus ?? bytes.
+
+By always writing to the end of the flash in circular motion, all blocks in the flash will be written at the same rate and have even number of erase counts
+
 How it works
+
+mkfs.spinfs
+In order to use any file system with a storage device the very first operation is initializing the medium with a format that file system can understand. According to spinfs, this step is essentially erasing the whole raw flash device and write the first node for root directory, which is also the most important entity in any file system. Writing root directory can be as simple as transfering all bytes consisting in a raw_node structure with "/" name, i-node number of 1, parent i-node of 0, since root directory has no parent, and data part has 0 byte size to address 0x0 of the flash.
+create
+The next usual operation with file system is populating the storage by creating files or sub-directories under root directory. New file created in the filesystem means a new node structure referring to the file with corresponding i-node will be written to the flash, continue after the last occupied address of the last node, in the case with a freshly formatted filesystem, new node is added after root directory node. Continue creating new files and sub-directories will keep appending new nodes for those entities to the flash toward the ending address. At the point when there is not enough space to allocate new node, an operation called garbage collection will be triggered trying to search for free space, and if it fails to do so, a "Not enough space left" error will be returned. Garbage collection will be discussed more in details later in this section.
+update
+Due to the design of log-structured file systems, every update to content or metadata of a file will result in writing a whole new node for that file with modified data to next available space in the raw flash. The new node will have higher version value than the old ones, and these old nodes are said to be obsoleted, where the content they contain has been outdated by a later node. Space taken by obsoleted nodes is referred to as "dirty space" and will be reclaimed later by garbage collection operation.
+
+delete
+File deletion is also considered an update to the file. Spinfs simply marks the file as deleted by setting deleted bit in its flag and write a new version of the file's node with zero data to the flash. After the file is marked as deleted, any operations with associated i-node number should not be possible and return error.
+
+note about file/dir creation
+When creating or deleting any files and directories, content of the parent directory is subjected to get modified, hence an update to the parent's node will be performed and another new node will be written.
+
+read
+need to find the latest version of the node
+For the reason that there will be many nodes associated with a single i-node number in file system structure, when reading content of an i-node, spinfs should ignore all obsoleted nodes and only return the latest information about that i-node. Therefore, spinfs always keeps an i-node table in memory and updates this table with corresponding changes. The i-node table has columns for i-node number, latest version of raw_node for that i-node and physical starting address of that raw_node in storage device. At mount time, spinfs scans through the whole flash to populate this table. Upon looking at a new i-node number, a new entry will be appended to the table, while upon a newer version of an entry is found, that entry will be updated with the corresponding data.
+    
+Operations example
+    
+Garbage collection
+head and tail store in Security Register, int32, so can store # slots, 
+At the point when the system is out of space due to continuous writes of new data, it needs to start reclaiming the dirty space which is the result of obsoleted and deleted nodes.
+    
 
 Implementation into FUSE lib
 
 Testing result
+Hardware in use
+Raspberry Pi as host running Linux as OS
+
+NOR Flash IC S25FL164K controlled over SPI communication.
+The programming page size is 256 bytes, smallest unit erased size is a page of 4KiB
+
 
 
 
 Conclusion
-Limitation
+Limitation of current design
+write to flash every update
 
 Further development
 
 What I achieve with my FS
 
+
+
+REFERENCES
+1. Practical file system design
