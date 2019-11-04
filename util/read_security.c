@@ -3,7 +3,7 @@
 void print_usage()
 {
         fprintf(stderr, "####### Read some bytes at a Security Register address #######\n");
-        fprintf(stderr, "Format: read [address] [bytes]\n");
+        fprintf(stderr, "Format: read_security [address] [bytes]\n");
         fprintf(stderr, "### address default = 0x001000 ###\n");
         fprintf(stderr, "### bytes default   = 256      ###\n");
         fprintf(stderr, "\n");
