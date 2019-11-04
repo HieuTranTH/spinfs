@@ -9,7 +9,8 @@ CFLAGS += -DSPI_SPEED=25000000
 endif
 
 ALL_UTILS = dump_flash erase_block erase_chip erase_sector readID read write \
-			read_security write_security erase_security
+			read_security write_security erase_security \
+			file_ops_example
 
 all: $(addprefix output/, $(ALL_UTILS))
 
