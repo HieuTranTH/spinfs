@@ -23,7 +23,6 @@
  */
 uint32_t head, tail;
 uint32_t ht_slot;       /* determine position of newest head and tail in Sec Regs*/
-unsigned char static_buffer_fs[MAIN_FLASH_SIZE];        /* FS buffer with the flash max size */
 
 /*
  * Update head and tail by pair to SEC_REG 1 and 2
@@ -37,8 +36,8 @@ int update_head_tail(uint32_t head_n, uint32_t tail_n)
 void print_node_info(struct spinfs_raw_inode *ri)
 {
         int node_size =  sizeof(*ri) + ri->data_size;
-        printf("Size of node %d is: %d + %d = %d\n"
-                , ri->inode_num, sizeof(*ri), ri->data_size, node_size);
+        printf("Size of i-node %d, %s is: %d + %d = %d\n"
+                , ri->inode_num, ri->name, sizeof(*ri), ri->data_size, node_size);
         print_buffer((unsigned char *)ri, node_size);
         printf("\n");
 }

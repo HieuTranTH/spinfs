@@ -56,18 +56,17 @@ int main(int argc, char *argv[])
         char *current_name = NULL;
 //int current_node_size = 0;
 
-        // raw_inode pointer
+        /*
+         *raw_inode pointer
+         */
         struct spinfs_raw_inode *ri = NULL;
 
         struct dir_entry *root_p = NULL;
-        //struct dir_entry *root_p = malloc(sizeof(*root_p));
         uint32_t root_p_size = 0;
-        /*
         struct dir_entry *dir1_p = NULL;
         uint32_t dir1_p_size = 0;
         struct dir_entry *dir2_p = NULL;
         uint32_t dir2_p_size = 0;
-        */
 
         fp = fopen("sim_flash.bin", "w");
 
@@ -107,7 +106,149 @@ int main(int argc, char *argv[])
         count++;
         ///////////////////////////////////////////////////////////////
 
-#endif
+        /*
+         * new "bar" node
+         */
+        current_name = "bar";
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 1, 1,
+                        strlen(current_name), current_name);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+
+        /*
+         * update "/" node
+         */
+        update_dir_table(&root_p, &root_p_size, ri->name, ri->inode_num);
+        current_name = "/";
+        populate_raw_inode(&ri, current_name, 1, 0, 3,
+                        root_p_size, (char *)root_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+        ///////////////////////////////////////////////////////////////
+
+        /*
+         * new "dir1" node
+         */
+        current_name = "dir1";
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 1, 1,
+                        dir1_p_size, (char *)dir1_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+
+        /*
+         * update "/" node
+         */
+        update_dir_table(&root_p, &root_p_size, ri->name, ri->inode_num);
+        current_name = "/";
+        populate_raw_inode(&ri, current_name, 1, 0, 4,
+                        root_p_size, (char *)root_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+        ///////////////////////////////////////////////////////////////
+
+        /*
+         * new "dir2" node
+         */
+        current_name = "dir2";
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+                        dir2_p_size, (char *)dir2_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+
+        /*
+         * update "dir1" node
+         */
+        update_dir_table(&dir1_p, &dir1_p_size, ri->name, ri->inode_num);
+        current_name = "dir1";
+        populate_raw_inode(&ri, current_name, 4, 1, 2,
+                        dir1_p_size, (char *)dir1_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+        ///////////////////////////////////////////////////////////////
+
+        /*
+         * new "a" node
+         */
+        current_name = "a";
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+                        strlen(current_name), current_name);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+
+        /*
+         * update "dir1" node
+         */
+        update_dir_table(&dir1_p, &dir1_p_size, ri->name, ri->inode_num);
+        current_name = "dir1";
+        populate_raw_inode(&ri, current_name, 4, 1, 3,
+                        dir1_p_size, (char *)dir1_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+        ///////////////////////////////////////////////////////////////
+
+        /*
+         * new "b" node
+         */
+        current_name = "b";
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+                        strlen(current_name), current_name);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+
+        /*
+         * update "dir1" node
+         */
+        update_dir_table(&dir1_p, &dir1_p_size, ri->name, ri->inode_num);
+        current_name = "dir1";
+        populate_raw_inode(&ri, current_name, 4, 1, 4,
+                        dir1_p_size, (char *)dir1_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+        ///////////////////////////////////////////////////////////////
+
+        /*
+         * new "c" node
+         */
+        current_name = "c";
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+                        strlen(current_name), current_name);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+
+        /*
+         * update "dir2" node
+         */
+        update_dir_table(&dir2_p, &dir2_p_size, ri->name, ri->inode_num);
+        current_name = "dir2";
+        populate_raw_inode(&ri, current_name, 5, 4, 2,
+                        dir2_p_size, (char *)dir2_p);
+        // print info then write to flash
+        print_node_info(ri);
+        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        count++;
+        ///////////////////////////////////////////////////////////////
 
 
 
@@ -115,6 +256,8 @@ int main(int argc, char *argv[])
 
         if (ri != NULL) free(ri);
         if (root_p != NULL) free(root_p);
+        if (dir1_p != NULL) free(dir1_p);
+        if (dir2_p != NULL) free(dir2_p);
         fclose(fp);
         return 0;
 }
