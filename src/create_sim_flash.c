@@ -9,7 +9,7 @@
 //dir_entry_size
 
 void populate_raw_inode(
-                struct spinfs_raw_inode *ri,
+                struct spinfs_raw_inode **ri_dp,
                 char *name,
                 uint32_t inode_num,
                 uint32_t parent_inode,
@@ -18,33 +18,33 @@ void populate_raw_inode(
                 char *data)
 {
         // realloc based on data_size
-        ri = realloc(ri, sizeof(*ri) + data_size);
+        *ri_dp = realloc(*ri_dp, sizeof(**ri_dp) + data_size);
         //populate the node based on parameters
-        ri->magic1 = SPIN_FS_MAGIC1;
-        strncpy(ri->name, name, 32);
-        ri->inode_num = inode_num;
-        ri->parent_inode = parent_inode;
-        ri->version = version;
-        ri->data_size = data_size;
-        ri->magic2 = SPIN_FS_MAGIC2;
+        (*ri_dp)->magic1 = SPIN_FS_MAGIC1;
+        strncpy((*ri_dp)->name, name, 32);
+        (*ri_dp)->inode_num = inode_num;
+        (*ri_dp)->parent_inode = parent_inode;
+        (*ri_dp)->version = version;
+        (*ri_dp)->data_size = data_size;
+        (*ri_dp)->magic2 = SPIN_FS_MAGIC2;
         if (data_size > 0)
-                memcpy(ri->data, data, data_size);
+                memcpy((*ri_dp)->data, data, data_size);
 }
 
-void update_dir_table(struct dir_entry *dir_table_p, uint32_t *current_size, char *name, uint32_t inode_num)
+void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
+                uint32_t inode_num)
 {
-        printf("Dir size to be updated: %d + %d = %d\n", *current_size,
-                        sizeof(*dir_table_p), *current_size
-                        + sizeof(*dir_table_p));
+        printf("Dir size to be updated: %d + %d = %d\n", *size,
+                        sizeof(**dt), *size + sizeof(**dt));
         printf("Other parameter: %s, %d\n", name, inode_num);
-        dir_table_p = realloc(dir_table_p, *current_size + sizeof(*dir_table_p));
-        strncpy(dir_table_p[*current_size].name, name, 32);
-        dir_table_p[*current_size].inode_num = inode_num;
+        *dt = realloc(*dt, *size + sizeof(**dt));
+        strncpy((*dt)[*size].name, name, 32);
+        (*dt)[*size].inode_num = inode_num;
 
-        *current_size += sizeof(*dir_table_p);
+        *size += sizeof(**dt);
 
-        printf("Content in pointer: %p\n", dir_table_p);
-        print_buffer((unsigned char*)dir_table_p, *current_size);
+        printf("Content in pointer: %p\n", *dt);
+        print_buffer((unsigned char*)*dt, *size);
 }
 
 int main(int argc, char *argv[])
@@ -54,9 +54,13 @@ int main(int argc, char *argv[])
         int current_inode_num = 0;
         char *current_name = NULL;
 //int current_node_size = 0;
-        struct dir_entry *root_dir_p = NULL;
-        //struct dir_entry *root_dir_p = malloc(sizeof(*root_dir_p));
-        uint32_t root_dir_p_size = 0;
+
+        // raw_inode pointer
+        struct spinfs_raw_inode *ri = NULL;
+
+        struct dir_entry *root_p = NULL;
+        //struct dir_entry *root_p = malloc(sizeof(*root_p));
+        uint32_t root_p_size = 0;
         /*
         struct dir_entry *dir1_p = NULL;
         uint32_t dir1_p_size = 0;
@@ -66,15 +70,12 @@ int main(int argc, char *argv[])
 
         fp = fopen("sim_flash.bin", "w");
 
-        // raw_inode pointer
-        struct spinfs_raw_inode *ri = malloc(sizeof(*ri));
-
         /*
          * new "/" node
          */
         current_name = "/";
-        populate_raw_inode(ri, current_name, ++current_inode_num, 0, 1,
-                        root_dir_p_size, (char *)root_dir_p);
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 0, 1,
+                        root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
         fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
@@ -85,7 +86,7 @@ int main(int argc, char *argv[])
          * new "foo" node
          */
         current_name = "foo";
-        populate_raw_inode(ri, current_name, ++current_inode_num, 1, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, 1, 1,
                         strlen(current_name), current_name);
         // print info then write to flash
         print_node_info(ri);
@@ -95,27 +96,30 @@ int main(int argc, char *argv[])
         /*
          * update "/" node
          */
-        printf("Content in pointer: %p\n", root_dir_p);
-        //update_dir_table(root_dir_p, &root_dir_p_size, ri->name, ri->inode_num);
-        printf("New root_dir_p_size: %d\n", root_dir_p_size);
+        printf("Content in pointer: %p\n", root_p);
+        update_dir_table(&root_p, &root_p_size, ri->name, ri->inode_num);
+        printf("New root_p_size: %d\n", root_p_size);
 
-        printf("Content in pointer: %p\n", root_dir_p);
-        print_buffer((unsigned char*)root_dir_p, root_dir_p_size);
+        printf("Content in pointer: %p\n", root_p);
+        print_buffer((unsigned char*)root_p, root_p_size);
+#if 1
         current_name = "/";
-        populate_raw_inode(ri, current_name, 1, 0, 2,
-                        root_dir_p_size, (char *)root_dir_p);
+        populate_raw_inode(&ri, current_name, 1, 0, 2,
+                        root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
         fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
         count++;
         ///////////////////////////////////////////////////////////////
 
+#endif
 
 
 
         printf("Total count: %d\n", count);
 
-        free(ri);
+        if (ri != NULL) free(ri);
+        if (root_p != NULL) free(root_p);
         fclose(fp);
         return 0;
 }
