@@ -34,17 +34,18 @@ void populate_raw_inode(
 void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
                 uint32_t inode_num)
 {
-        printf("Dir size to be updated: %d + %d = %d\n", *size,
+        printf("        New directory size: %d + %d = %d\n", *size,
                         sizeof(**dt), *size + sizeof(**dt));
-        printf("Other parameter: %s, %d\n", name, inode_num);
+        printf("        New entry: %s, %d\n", name, inode_num);
+
         *dt = realloc(*dt, *size + sizeof(**dt));
-        strncpy((*dt)[*size].name, name, 32);
-        (*dt)[*size].inode_num = inode_num;
+        int dt_index = *size / sizeof(**dt);
+        printf("        Index of new entry: %d\n", dt_index);
+        strncpy((*dt)[dt_index].name, name, 32);
+        (*dt)[dt_index].inode_num = inode_num;
 
         *size += sizeof(**dt);
-
-        printf("Content in pointer: %p\n", *dt);
-        print_buffer((unsigned char*)*dt, *size);
+        //print_buffer((unsigned char*)*dt, *size);
 }
 
 int main(int argc, char *argv[])
@@ -96,13 +97,7 @@ int main(int argc, char *argv[])
         /*
          * update "/" node
          */
-        printf("Content in pointer: %p\n", root_p);
         update_dir_table(&root_p, &root_p_size, ri->name, ri->inode_num);
-        printf("New root_p_size: %d\n", root_p_size);
-
-        printf("Content in pointer: %p\n", root_p);
-        print_buffer((unsigned char*)root_p, root_p_size);
-#if 1
         current_name = "/";
         populate_raw_inode(&ri, current_name, 1, 0, 2,
                         root_p_size, (char *)root_p);
