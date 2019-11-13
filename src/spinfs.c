@@ -36,7 +36,12 @@ int update_head_tail(uint32_t head_n, uint32_t tail_n)
 void print_node_info(struct spinfs_raw_inode *ri)
 {
         int node_size =  sizeof(*ri) + ri->data_size;
-        printf("Size of i-node %d, %s is: %d + %d = %d\n"
+        /*
+         * There might a bug here when printing %s with ri->name when ri->name
+         * is 32-bit length and there is no NULL character
+         * Solution: use precision %.32s
+         */
+        printf("Size of i-node %d, %.32s is: %d + %d = %d\n"
                 , ri->inode_num, ri->name, sizeof(*ri), ri->data_size, node_size);
         print_buffer((unsigned char *)ri, node_size);
         printf("\n");

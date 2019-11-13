@@ -36,7 +36,7 @@ void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
 {
         printf("        New directory size: %d + %d = %d\n", *size,
                         sizeof(**dt), *size + sizeof(**dt));
-        printf("        New entry: %s, %d\n", name, inode_num);
+        printf("        New entry: %.32s, %d\n", name, inode_num);
 
         *dt = realloc(*dt, *size + sizeof(**dt));
         int dt_index = *size / sizeof(**dt);
