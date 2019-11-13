@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
         FILE *fp, *fp_w;
         int d;
         unsigned char c;
-        int count;
+        int count = 0;
 
         if (argc > 1)
                 fp = fopen(argv[1], "r+");
