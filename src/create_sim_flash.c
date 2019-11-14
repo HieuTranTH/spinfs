@@ -31,6 +31,9 @@ void populate_raw_inode(
                 memcpy((*ri_dp)->data, data, data_size);
 }
 
+/*
+ * size is in bytes, should be size of array
+ */
 void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
                 uint32_t inode_num)
 {
@@ -50,7 +53,13 @@ void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
 
 int main(int argc, char *argv[])
 {
-        FILE *fp;
+        char sim_flash[] = "sim_flash.bin";
+        FILE *fp = fopen(sim_flash, "w");
+        if (fp == NULL) {
+                perror("File open error");
+                exit(EXIT_FAILURE);
+        }
+
         int count = 0;
         int current_inode_num = 0;
         char *current_name = NULL;
@@ -67,8 +76,6 @@ int main(int argc, char *argv[])
         uint32_t dir1_p_size = 0;
         struct dir_entry *dir2_p = NULL;
         uint32_t dir2_p_size = 0;
-
-        fp = fopen("sim_flash.bin", "w");
 
         /*
          * new "/" node
@@ -254,10 +261,10 @@ int main(int argc, char *argv[])
 
         printf("Total count: %d\n", count);
 
-        if (ri != NULL) free(ri);
-        if (root_p != NULL) free(root_p);
-        if (dir1_p != NULL) free(dir1_p);
-        if (dir2_p != NULL) free(dir2_p);
+        free(ri);
+        free(root_p);
+        free(dir1_p);
+        free(dir2_p);
         fclose(fp);
         return 0;
 }

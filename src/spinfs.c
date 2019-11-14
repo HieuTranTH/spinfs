@@ -47,6 +47,28 @@ void print_node_info(struct spinfs_raw_inode *ri)
         printf("\n");
 }
 
+void print_inode_table(struct inode_table_entry *it, uint32_t it_max_inode)
+{
+
+        printf("    I-node    |    Address     |   Version    \n");
+        for (int i = 1; i <= it_max_inode; i++) {
+                printf("     %4d         0x%06x           %4d   \n", i, it[i].physical_addr, it[i].version);
+        }
+}
+
+void spinfs_scan_fs(uint32_t head, uint32_t tail)
+{
+}
+
+/*
+ * Return inode structure from a physical address
+ */
+void spinfs_get_inode_at_addr(struct spinfs_raw_inode *s, uint32_t addr)
+{
+        //struct spinfs_raw_inode holder;
+        s = realloc(s, sizeof(*s));
+}
+
 /*
 struct spinfs_raw_inode *createInode(unsigned char *d_buf, uint32_t d_size)
 {

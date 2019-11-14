@@ -13,7 +13,8 @@ ALL_UTILS = dump_flash erase_block erase_chip erase_sector readID read write \
 			file_ops_example \
 			#spinfs_cp
 
-all: $(addprefix output/, $(ALL_UTILS)) src/create_sim_flash
+all: $(addprefix output/, $(ALL_UTILS)) \
+	src/create_sim_flash src/scan_sim_flash
 
 clean:
 	rm -rf output
@@ -32,6 +33,12 @@ src/create_sim_flash.o: src/create_sim_flash.c include/spinfs.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 src/create_sim_flash: src/create_sim_flash.o src/spinfs.o src/spi_flash.o
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
+
+src/scan_sim_flash.o: src/scan_sim_flash.c include/spinfs.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/scan_sim_flash: src/scan_sim_flash.o src/spinfs.o src/spi_flash.o
 	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
 
 $(addprefix util/, $(addsuffix .o, $(ALL_UTILS))): util/%.o: util/%.c include/spi_flash.h
