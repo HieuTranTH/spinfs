@@ -23,6 +23,7 @@
  */
 uint32_t head, tail;
 uint32_t ht_slot;       /* determine position of newest head and tail in Sec Regs*/
+uint32_t inode_table_size;  // = array size - 1
 
 /*
  * Update head and tail by pair to SEC_REG 1 and 2
@@ -47,11 +48,11 @@ void print_node_info(struct spinfs_raw_inode *ri)
         printf("\n");
 }
 
-void print_inode_table(struct inode_table_entry *it, uint32_t it_max_inode)
+void print_inode_table(struct inode_table_entry *it)
 {
 
         printf("    I-node    |    Address     |   Version    \n");
-        for (int i = 1; i <= it_max_inode; i++) {
+        for (int i = 1; i <= inode_table_size; i++) {
                 printf("     %4d         0x%06x           %4d   \n", i, it[i].physical_addr, it[i].version);
         }
 }

@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
         struct dir_entry *dir2_p = NULL;
         uint32_t dir2_p_size = 0;
 #endif
+        extern uint32_t inode_table_size;  // = array size - 1
 
         char sim_flash[] = "sim_flash.bin";
         /*
@@ -103,7 +104,7 @@ int main(int argc, char *argv[])
                 printf("Address: 0x%06x\n", addr);
                 get_inode_at_addr(&ri, fp, addr);
                 print_node_info(ri);
-                update_inode_table(&itable, &itable_max_inode, ri->inode_num, addr, ri->version);
+                update_inode_table(&itable, &inode_table_size, ri->inode_num, addr, ri->version);
                 printf("\n");
 
                 addr += sizeof(*ri) + ri->data_size;
@@ -113,11 +114,11 @@ int main(int argc, char *argv[])
         printf("Total count: %d\n", count);
 
         printf("\n");
-        print_buffer((unsigned char *)itable, (itable_max_inode + 1) * sizeof(*itable));
+        print_buffer((unsigned char *)itable, (inode_table_size + 1) * sizeof(*itable));
 
 
         printf("\n");
-        print_inode_table(itable, itable_max_inode);
+        print_inode_table(itable);
 
 
         free(ri);
