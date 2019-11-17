@@ -32,7 +32,7 @@ void populate_raw_inode(
 }
 
 /*
- * size is in bytes, should be size of array
+ * size is in bytes, not the size of array
  */
 void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
                 uint32_t inode_num)

@@ -13,7 +13,7 @@ void get_inode_at_addr(struct spinfs_raw_inode **s, FILE *f, uint32_t addr)
         //struct spinfs_raw_inode holder;
         *s = realloc(*s, sizeof(**s));     // allocate initial size
         /*
-         * Get correct inode size
+         * Get inode stem (without data)
          */
         fseek(f, addr, SEEK_SET);
         fread(*s, 1, sizeof(**s), f);
@@ -46,25 +46,12 @@ void update_inode_table(struct inode_table_entry **it, uint32_t *max_inode,
         (*it)[inode_num].version = version;
 
         printf("        New biggest inode in inode table: %d\n", *max_inode);
-#if 0
-        *dt = realloc(*dt, *size + sizeof(**dt));
-        int dt_index = *size / sizeof(**dt);
-        printf("        Index of new entry: %d\n", dt_index);
-        strncpy((*dt)[dt_index].name, name, 32);
-        (*dt)[dt_index].inode_num = inode_num;
-
-        *size += sizeof(**dt);
-#endif
-        //print_buffer((unsigned char*)*dt, *size);
 }
 
 int main(int argc, char *argv[])
 {
         int count = 0;
-        int current_inode_num = 0;
-        char *current_name = NULL;
         int addr = 0;
-//int current_node_size = 0;
 
         /*
          *raw_inode pointer
@@ -72,15 +59,6 @@ int main(int argc, char *argv[])
         struct spinfs_raw_inode *ri = NULL;
 
         struct inode_table_entry *itable = calloc(1, sizeof(*itable));
-        uint32_t itable_max_inode = 0;
-#if 0
-        struct dir_entry *root_p = NULL;
-        uint32_t root_p_size = 0;
-        struct dir_entry *dir1_p = NULL;
-        uint32_t dir1_p_size = 0;
-        struct dir_entry *dir2_p = NULL;
-        uint32_t dir2_p_size = 0;
-#endif
         extern uint32_t inode_table_size;  // = array size - 1
 
         char sim_flash[] = "sim_flash.bin";
@@ -123,11 +101,6 @@ int main(int argc, char *argv[])
 
         free(ri);
         free(itable);
-#if 0
-        free(root_p);
-        free(dir1_p);
-        free(dir2_p);
-#endif
         fclose(fp);
         return 0;
 }
