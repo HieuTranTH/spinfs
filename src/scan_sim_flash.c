@@ -1,5 +1,5 @@
 #include "spinfs.h"
-#include "spi_flash.h"
+#include "spi_flash.h"  //print_buffer()
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -7,6 +7,7 @@
 
 /*
  * Return inode structure from a physical address
+ * TODO not use double pointer, can just use pointer and return it back
  */
 void get_inode_at_addr(struct spinfs_raw_inode **s, FILE *f, uint32_t addr)
 {
@@ -26,6 +27,7 @@ void get_inode_at_addr(struct spinfs_raw_inode **s, FILE *f, uint32_t addr)
 
 /*
  * Update inode table
+ * TODO not use double pointer, can just use pointer and return it back
  */
 void update_inode_table(struct inode_table_entry **it, uint32_t *max_inode,
                 uint32_t inode_num, uint32_t addr, uint32_t version)

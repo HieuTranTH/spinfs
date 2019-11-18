@@ -8,6 +8,9 @@
 //realloc_struct_based_on_data_size
 //dir_entry_size
 
+/*
+ * TODO not use double pointer, can just use pointer and return it back
+ */
 void populate_raw_inode(
                 struct spinfs_raw_inode **ri_dp,
                 char *name,
@@ -33,6 +36,7 @@ void populate_raw_inode(
 
 /*
  * size is in bytes, not the size of array
+ * TODO not use double pointer, can just use pointer and return it back
  */
 void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
                 uint32_t inode_num)
