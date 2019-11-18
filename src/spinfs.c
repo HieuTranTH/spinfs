@@ -57,6 +57,58 @@ void print_inode_table(struct inode_table_entry *it)
         }
 }
 
+void ls_file(struct spinfs_raw_inode *inode)
+{
+        printf("Output:\n");
+        printf("%.*s", MAX_NAME_LEN, inode->name);
+}
+
+void print_directory(struct spinfs_raw_inode *inode)
+{
+        // TODO check inode is a directory
+
+        int dir_file_count = inode->data_size / sizeof(struct dir_entry);
+        printf("Directory %.*s", MAX_NAME_LEN, inode->name);
+        if (dir_file_count == 0) {
+                printf(" is empty.\n");
+                return;
+        }
+        printf(" has %d file(s).\n", dir_file_count);
+        printf("    Entry index    |    File name     |   I-node number    \n");
+        for (int i = 0; i < dir_file_count; i++) {
+                printf("     %4d                   %.*s                %4d   \n",
+                                i, MAX_NAME_LEN,
+                                ((struct dir_entry *)inode->data)[i].name,
+                                ((struct dir_entry*)inode->data)[i].inode_num);
+        }
+}
+
+uint32_t find_file_in_dir(struct spinfs_raw_inode *inode, char *filename)
+{
+        // TODO check inode is a directory
+        if (S_ISREG(inode->mode)) {
+                printf("%.*s is a regular file.\n", MAX_NAME_LEN, inode->name);
+                return 0;
+        }
+        else if (S_ISDIR(inode->mode)) {
+                printf("%.*s is a directory.\n", MAX_NAME_LEN, inode->name);
+        }
+
+        int dir_file_count = inode->data_size / sizeof(struct dir_entry);
+        for (int i = 0; i < dir_file_count; i++) {
+                printf("Index %d, %.*s, target %s :", i, MAX_NAME_LEN, ((struct dir_entry *)inode->data)[i].name, filename);
+                if (strncmp(filename, ((struct dir_entry *)inode->data)[i].name, MAX_NAME_LEN) == 0) {
+                        printf("matched.\n");
+                        printf("\n");
+                        return ((struct dir_entry *)inode->data)[i].inode_num;
+                } else {
+                        printf("unmatched.\n");
+                }
+        }
+        printf("\n");
+        return 0;
+}
+
 void spinfs_scan_fs(uint32_t head, uint32_t tail)
 {
 }

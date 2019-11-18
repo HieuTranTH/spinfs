@@ -101,6 +101,62 @@ int main(int argc, char *argv[])
         printf("\n");
         print_inode_table(itable);
 
+        printf("\n---------------------------------------------------------------\n");
+        printf("Executing ls tool:\n");
+        printf("\n---------------------------------------------------------------\n");
+
+        char path[] = "/dir1/a";
+        uint32_t target_inode_num = 1;
+        printf("Address of path pointer: %p.\n", path);
+        if (path[0] != '/') {
+                printf("Path needs to be absolute!\n");
+                exit(EXIT_FAILURE);
+        }
+        printf("\npath: %s\n", path);
+        int pathlen = strlen(path);
+        printf("pathlen: %d\n\n", pathlen);
+        /*
+         * Parse the path to get the target i-node
+         */
+        char *token;
+        token = strtok(path, "/");
+        //printf("Address of token pointer: %p.\n", token);
+        if (token == NULL) {
+                // target i-node is root directory
+                target_inode_num = 1;
+        } else {
+                // TODO get current directory name from path
+                while (token != NULL) {
+                        /*
+                        printf("\npath: %s\n", path);
+                        fwrite(path, 1, pathlen, stdout);
+                        printf("\n");
+                        printf("Address of token pointer: %p.\n", token);
+                        printf("-%s-\n", token);
+                        */
+                        get_inode_at_addr(&ri, fp, itable[target_inode_num].physical_addr);
+                        target_inode_num = find_file_in_dir(ri, token);
+                        if (target_inode_num == 0) break;
+
+                        token = strtok(NULL, "/");
+                }
+        }
+
+
+        /*
+         * List content of the i-node afer path processing
+         * TODO if i-node is a directory, list content; otherwise repeat its name
+         */
+        if (target_inode_num == 0) {
+                printf("File/Directory not found.\n");
+        } else {
+                get_inode_at_addr(&ri, fp, itable[target_inode_num].physical_addr);
+                if (S_ISREG(ri->mode)) {        // target is a regular file
+                        ls_file(ri);
+                } else if (S_ISDIR(ri->mode)) {
+                        print_directory(ri);
+                }
+        }
 
         free(ri);
         free(itable);

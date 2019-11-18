@@ -48,6 +48,10 @@ int update_head_tail(uint32_t head_n, uint32_t tail_n);
 
 void print_node_info(struct spinfs_raw_inode *ri);
 void print_inode_table(struct inode_table_entry *it);
+void ls_file(struct spinfs_raw_inode *inode);
+void print_directory(struct spinfs_raw_inode *inode);
+
+uint32_t find_file_in_dir(struct spinfs_raw_inode *inode, char *filename);
 
 void spinfs_scan_fs(uint32_t head, uint32_t tail);
 void spinfs_get_inode_at_addr(struct spinfs_raw_inode *s, uint32_t addr);
