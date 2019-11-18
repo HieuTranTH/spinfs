@@ -18,12 +18,12 @@ struct spinfs_raw_inode {
     uid_t uid;
     gid_t gid;
     time_t ctime;
+    time_t mtime;
     /*
      * Will be implemented later
      */
     /*
     int32_t flags;
-    time_t mtime;
     */
     uint32_t parent_inode;
     uint32_t version;

@@ -34,6 +34,7 @@ void populate_raw_inode(
         (*ri_dp)->uid = uid;
         (*ri_dp)->gid = gid;
         if (write_ctime) (*ri_dp)->ctime = time(NULL);
+        (*ri_dp)->mtime = time(NULL);
         (*ri_dp)->parent_inode = parent_inode;
         (*ri_dp)->version = version;
         (*ri_dp)->data_size = data_size;
