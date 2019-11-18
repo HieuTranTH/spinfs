@@ -21,7 +21,7 @@ void populate_raw_inode(
         *ri_dp = realloc(*ri_dp, sizeof(**ri_dp) + data_size);
         //populate the node based on parameters
         (*ri_dp)->magic1 = SPIN_FS_MAGIC1;
-        strncpy((*ri_dp)->name, name, 32);
+        strncpy((*ri_dp)->name, name, MAX_NAME_LEN);
         (*ri_dp)->inode_num = inode_num;
         (*ri_dp)->parent_inode = parent_inode;
         (*ri_dp)->version = version;
@@ -39,12 +39,12 @@ void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
 {
         printf("        New directory size: %d + %d = %d\n", *size,
                         sizeof(**dt), *size + sizeof(**dt));
-        printf("        New entry: %.32s, %d\n", name, inode_num);
+        printf("        New entry: %.*s, %d\n", MAX_NAME_LEN, name, inode_num);
 
         *dt = realloc(*dt, *size + sizeof(**dt));
         int dt_index = *size / sizeof(**dt);
         printf("        Index of new entry: %d\n", dt_index);
-        strncpy((*dt)[dt_index].name, name, 32);
+        strncpy((*dt)[dt_index].name, name, MAX_NAME_LEN);
         (*dt)[dt_index].inode_num = inode_num;
 
         *size += sizeof(**dt);

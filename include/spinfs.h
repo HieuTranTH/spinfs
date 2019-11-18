@@ -4,9 +4,11 @@
 #define SPIN_FS_MAGIC1 0x5350494e   /* SPIN */
 #define SPIN_FS_MAGIC2 0x46537631   /* FSv1 */
 
+#define MAX_NAME_LEN 32
+
 struct spinfs_raw_inode {
     uint32_t magic1;
-    char name[32];
+    char name[MAX_NAME_LEN];
     uint32_t inode_num;
     /*
      * Will be implemented later
@@ -30,7 +32,7 @@ struct spinfs_raw_inode {
 };
 
 struct dir_entry {
-    char name[32];
+    char name[MAX_NAME_LEN];
     uint32_t inode_num;
 };
 
