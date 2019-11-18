@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <sys/stat.h>
 //#include <time.h> /* time_t */
 
 #define SPIN_FS_MAGIC1 0x5350494e   /* SPIN */
@@ -10,13 +11,13 @@ struct spinfs_raw_inode {
     uint32_t magic1;
     char name[MAX_NAME_LEN];
     uint32_t inode_num;
+    mode_t mode;
     /*
      * Will be implemented later
      */
     /*
     int32_t uid;
     int32_t gid;
-    int32_t mode;
     int32_t flags;
     time_t ctime;
     time_t mtime;

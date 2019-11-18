@@ -15,6 +15,7 @@ void populate_raw_inode(
                 struct spinfs_raw_inode **ri_dp,
                 char *name,
                 uint32_t inode_num,
+                mode_t mode,
                 uint32_t parent_inode,
                 uint32_t version,
                 uint32_t data_size,
@@ -26,6 +27,7 @@ void populate_raw_inode(
         (*ri_dp)->magic1 = SPIN_FS_MAGIC1;
         strncpy((*ri_dp)->name, name, MAX_NAME_LEN);
         (*ri_dp)->inode_num = inode_num;
+        (*ri_dp)->mode = mode;
         (*ri_dp)->parent_inode = parent_inode;
         (*ri_dp)->version = version;
         (*ri_dp)->data_size = data_size;
@@ -85,7 +87,7 @@ int main(int argc, char *argv[])
          * new "/" node
          */
         current_name = "/";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 0, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFDIR, 0, 1,
                         root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
@@ -97,7 +99,7 @@ int main(int argc, char *argv[])
          * new "foo" node
          */
         current_name = "foo";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 1, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFREG, 1, 1,
                         strlen(current_name), current_name);
         // print info then write to flash
         print_node_info(ri);
@@ -109,7 +111,7 @@ int main(int argc, char *argv[])
          */
         update_dir_table(&root_p, &root_p_size, ri->name, ri->inode_num);
         current_name = "/";
-        populate_raw_inode(&ri, current_name, 1, 0, 2,
+        populate_raw_inode(&ri, current_name, 1, S_IFDIR, 0, 2,
                         root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
@@ -121,7 +123,7 @@ int main(int argc, char *argv[])
          * new "bar" node
          */
         current_name = "bar";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 1, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFREG, 1, 1,
                         strlen(current_name), current_name);
         // print info then write to flash
         print_node_info(ri);
@@ -133,7 +135,7 @@ int main(int argc, char *argv[])
          */
         update_dir_table(&root_p, &root_p_size, ri->name, ri->inode_num);
         current_name = "/";
-        populate_raw_inode(&ri, current_name, 1, 0, 3,
+        populate_raw_inode(&ri, current_name, 1, S_IFDIR, 0, 3,
                         root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
@@ -145,7 +147,7 @@ int main(int argc, char *argv[])
          * new "dir1" node
          */
         current_name = "dir1";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 1, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFREG, 1, 1,
                         dir1_p_size, (char *)dir1_p);
         // print info then write to flash
         print_node_info(ri);
@@ -157,7 +159,7 @@ int main(int argc, char *argv[])
          */
         update_dir_table(&root_p, &root_p_size, ri->name, ri->inode_num);
         current_name = "/";
-        populate_raw_inode(&ri, current_name, 1, 0, 4,
+        populate_raw_inode(&ri, current_name, 1, S_IFDIR, 0, 4,
                         root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
@@ -169,7 +171,7 @@ int main(int argc, char *argv[])
          * new "dir2" node
          */
         current_name = "dir2";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFDIR, 4, 1,
                         dir2_p_size, (char *)dir2_p);
         // print info then write to flash
         print_node_info(ri);
@@ -181,7 +183,7 @@ int main(int argc, char *argv[])
          */
         update_dir_table(&dir1_p, &dir1_p_size, ri->name, ri->inode_num);
         current_name = "dir1";
-        populate_raw_inode(&ri, current_name, 4, 1, 2,
+        populate_raw_inode(&ri, current_name, 4, S_IFDIR, 1, 2,
                         dir1_p_size, (char *)dir1_p);
         // print info then write to flash
         print_node_info(ri);
@@ -193,7 +195,7 @@ int main(int argc, char *argv[])
          * new "a" node
          */
         current_name = "a";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFREG, 4, 1,
                         strlen(current_name), current_name);
         // print info then write to flash
         print_node_info(ri);
@@ -205,7 +207,7 @@ int main(int argc, char *argv[])
          */
         update_dir_table(&dir1_p, &dir1_p_size, ri->name, ri->inode_num);
         current_name = "dir1";
-        populate_raw_inode(&ri, current_name, 4, 1, 3,
+        populate_raw_inode(&ri, current_name, 4, S_IFDIR, 1, 3,
                         dir1_p_size, (char *)dir1_p);
         // print info then write to flash
         print_node_info(ri);
@@ -217,7 +219,7 @@ int main(int argc, char *argv[])
          * new "b" node
          */
         current_name = "b";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFREG, 4, 1,
                         strlen(current_name), current_name);
         // print info then write to flash
         print_node_info(ri);
@@ -229,7 +231,7 @@ int main(int argc, char *argv[])
          */
         update_dir_table(&dir1_p, &dir1_p_size, ri->name, ri->inode_num);
         current_name = "dir1";
-        populate_raw_inode(&ri, current_name, 4, 1, 4,
+        populate_raw_inode(&ri, current_name, 4, S_IFDIR, 1, 4,
                         dir1_p_size, (char *)dir1_p);
         // print info then write to flash
         print_node_info(ri);
@@ -241,7 +243,7 @@ int main(int argc, char *argv[])
          * new "c" node
          */
         current_name = "c";
-        populate_raw_inode(&ri, current_name, ++current_inode_num, 4, 1,
+        populate_raw_inode(&ri, current_name, ++current_inode_num, S_IFREG, 4, 1,
                         strlen(current_name), current_name);
         // print info then write to flash
         print_node_info(ri);
@@ -253,7 +255,7 @@ int main(int argc, char *argv[])
          */
         update_dir_table(&dir2_p, &dir2_p_size, ri->name, ri->inode_num);
         current_name = "dir2";
-        populate_raw_inode(&ri, current_name, 5, 4, 2,
+        populate_raw_inode(&ri, current_name, 5, S_IFDIR, 4, 2,
                         dir2_p_size, (char *)dir2_p);
         // print info then write to flash
         print_node_info(ri);
