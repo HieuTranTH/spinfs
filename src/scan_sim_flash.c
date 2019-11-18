@@ -19,9 +19,10 @@ void get_inode_at_addr(struct spinfs_raw_inode **s, FILE *f, uint32_t addr)
         fseek(f, addr, SEEK_SET);
         fread(*s, 1, sizeof(**s), f);
         if ((*s)->data_size > 0) {
-                *s = realloc(*s, sizeof(**s) + (*s)->data_size);     // allocate correct size
-                fseek(f, addr, SEEK_SET);
-                fread(*s, 1, sizeof(**s) + (*s)->data_size, f);                    // copy correct size structure
+                *s = realloc(*s, sizeof(**s) + (*s)->data_size);     // allocate extra memory for data[]
+                //fseek(f, addr, SEEK_SET);
+                //fread(*s, 1, sizeof(**s) + (*s)->data_size, f);                    // copy correct size structure
+                fread((*s)->data, 1, (*s)->data_size, f);                    // copy extra data to the allocated struct
         }
 }
 
