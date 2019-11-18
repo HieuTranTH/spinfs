@@ -60,7 +60,7 @@ void print_inode_table(struct inode_table_entry *it)
 void ls_file(struct spinfs_raw_inode *inode)
 {
         printf("Output:\n");
-        printf("%.*s", MAX_NAME_LEN, inode->name);
+        printf("%.*s\n", MAX_NAME_LEN, inode->name);
 }
 
 void print_directory(struct spinfs_raw_inode *inode)

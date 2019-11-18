@@ -12,12 +12,12 @@ struct spinfs_raw_inode {
     char name[MAX_NAME_LEN];
     uint32_t inode_num;
     mode_t mode;
+    uid_t uid;
+    gid_t gid;
     /*
      * Will be implemented later
      */
     /*
-    int32_t uid;
-    int32_t gid;
     int32_t flags;
     time_t ctime;
     time_t mtime;
