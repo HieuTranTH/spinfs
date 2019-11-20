@@ -5,6 +5,9 @@
 #include <string.h>
 
 
+#define WRITE_CTIME 1
+#define NOT_WRITE_CTIME 0
+
 //realloc_struct_based_on_data_size
 //dir_entry_size
 
@@ -93,9 +96,9 @@ int main(int argc, char *argv[])
 
         uid_t current_uid = getuid();
         gid_t current_gid = getgid();
-        printf("Current UID: %d, current GID: %d\n", current_uid, current_gid);
+        printf("Current UID: %d (0x%x), current GID: %d (0x%x)\n", current_uid, current_uid, current_gid, current_gid);
 
-        printf("Current time from Epoch: %ld, in hex 0x%x\n", time(NULL), time(NULL));
+        printf("Current time from Epoch: %ld, in hex 0x%lx\n", time(NULL), time(NULL));
 
         /*
          * new "/" node

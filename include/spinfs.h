@@ -7,8 +7,6 @@
 
 #define MAX_NAME_LEN 32
 
-#define WRITE_CTIME 1
-#define NOT_WRITE_CTIME 0
 #define DELETED     0x1
 
 struct spinfs_raw_inode {
