@@ -9,6 +9,7 @@
 
 #define WRITE_CTIME 1
 #define NOT_WRITE_CTIME 0
+#define DELETED     0x1
 
 struct spinfs_raw_inode {
     uint32_t magic1;
@@ -19,11 +20,11 @@ struct spinfs_raw_inode {
     gid_t gid;
     time_t ctime;
     time_t mtime;
+    uint32_t flags;
     /*
      * Will be implemented later
      */
     /*
-    int32_t flags;
     */
     uint32_t parent_inode;
     uint32_t version;
