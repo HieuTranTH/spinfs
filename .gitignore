@@ -60,3 +60,7 @@ create_tags
 
 # Output directories
 /output/
+
+# Simulated flash files
+sim_main_flash
+sim_sec_reg_*
