@@ -7,7 +7,13 @@
 
 #define MAX_NAME_LEN 32
 
-#define DELETED     0x1
+#define DELETED     0x1             /* in flags member */
+
+#ifdef SIMULATED_FLASH
+#define SIMULATED_MAIN_FILE_PATH "sim_main_flash"
+#define SIMULATED_HEAD_FILE_PATH "sim_sec_reg_1"
+#define SIMULATED_TAIL_FILE_PATH "sim_sec_reg_2"
+#endif
 
 struct spinfs_raw_inode {
     uint32_t magic1;
@@ -44,7 +50,42 @@ struct inode_table_entry {
     uint32_t version;
 };
 
-extern uint32_t head, tail; // might not need to be declared here
+#ifdef SIMULATED_FLASH
+//extern FILE* sim_main_file;
+//extern FILE* sim_head_file;
+//extern FILE* sim_tail_file;
+#endif
+
+void spinfs_init();
+void spinfs_deinit();
+
+/*
+ * ******************************************************
+ * head, tail functions
+ * ******************************************************
+ */
+void load_head_tail();
+
+uint32_t get_ht_slot();
+uint32_t get_head();
+uint32_t get_tail();
+void set_head_tail(uint32_t head_new, uint32_t tail_new);
+
+
+#ifdef SIMULATED_FLASH
+void sim_create_flash_file(char *file);
+#endif
+void spinfs_erase_sec_reg_1_2();
+int32_t spinfs_format();
+
+
+
+
+
+
+
+
+
 
 int update_head_tail(uint32_t head_n, uint32_t tail_n);
 

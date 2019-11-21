@@ -23,7 +23,275 @@
  */
 uint32_t head, tail;
 uint32_t ht_slot;       /* determine position of newest head and tail in Sec Regs*/
-uint32_t inode_table_size;  // = array size - 1
+uint32_t inode_table_size;  // does not count index 0, = array size - 1
+struct inode_table_entry *inode_table;
+
+#ifdef SIMULATED_FLASH
+FILE* sim_main_file;
+FILE* sim_head_file;
+FILE* sim_tail_file;
+#endif
+
+
+void spinfs_init()
+{
+        inode_table = calloc(1, sizeof(*inode_table));
+
+#ifdef SIMULATED_FLASH
+        /*
+         * Open simulated flash files
+         * If file not found, create it and format to 0xFF
+         */
+        sim_main_file = fopen(SIMULATED_MAIN_FILE_PATH, "r+");
+        if (sim_main_file == NULL) {
+                perror("Sim Main file open error");
+                sim_main_file = fopen(SIMULATED_MAIN_FILE_PATH, "w");
+                sim_create_flash_file(SIMULATED_MAIN_FILE_PATH);
+        }
+        sim_head_file = fopen(SIMULATED_HEAD_FILE_PATH, "r+");
+        if (sim_head_file == NULL) {
+                perror("Sim head file open error");
+                sim_head_file = fopen(SIMULATED_HEAD_FILE_PATH, "w");
+                sim_create_flash_file(SIMULATED_HEAD_FILE_PATH);
+        }
+        sim_tail_file = fopen(SIMULATED_TAIL_FILE_PATH, "r+");
+        if (sim_tail_file == NULL) {
+                perror("Sim tail file open error");
+                sim_tail_file = fopen(SIMULATED_TAIL_FILE_PATH, "w");
+                sim_create_flash_file(SIMULATED_TAIL_FILE_PATH);
+        }
+#endif
+
+        load_head_tail();
+
+}
+
+void spinfs_deinit()
+{
+        free(inode_table);
+#ifdef SIMULATED_FLASH
+        fclose(sim_main_file);
+        fclose(sim_head_file);
+        fclose(sim_tail_file);
+#endif
+}
+
+/*
+ * ******************************************************
+ * head, tail functions
+ * ******************************************************
+ */
+
+/*
+ * Load head and tail values from Security Registers
+ */
+void load_head_tail()
+{
+#ifdef SIMULATED_FLASH
+        /*
+         * Get the most recent head and tail value based on the last valid
+         * value in Security Registers
+         */
+        int sim_head_file_offset = 0;
+        int sim_tail_file_offset = 0;
+        for (sim_head_file_offset = SEC_REG_SIZE - sizeof(uint32_t);
+                        sim_head_file_offset >= 0;
+                        sim_head_file_offset -= sizeof(uint32_t)) {
+                fseek(sim_head_file, sim_head_file_offset, SEEK_SET);
+                if (fgetc(sim_head_file) != 0xFF) {
+                        break;
+                }
+                if (sim_head_file_offset == 0) {
+                        sim_head_file_offset = -1;
+                        break;
+                }
+        }
+        for (sim_tail_file_offset = SEC_REG_SIZE - sizeof(uint32_t);
+                        sim_tail_file_offset >= 0;
+                        sim_tail_file_offset -= sizeof(uint32_t)) {
+                fseek(sim_tail_file, sim_tail_file_offset, SEEK_SET);
+                if (fgetc(sim_tail_file) != 0xFF) {
+                        break;
+                }
+                if (sim_tail_file_offset == 0) {
+                        sim_tail_file_offset = -1;
+                        break;
+                }
+        }
+
+        printf("Security Register 1 offset 0x%x.\n", sim_head_file_offset);
+        printf("Security Register 2 offset 0x%x.\n", sim_tail_file_offset);
+
+        // Check to head and tail are written in pair and aligned to the same pair
+        if (sim_head_file_offset == sim_tail_file_offset) {
+                if (sim_head_file_offset == -1)
+                        ht_slot = 0;
+                else
+                        ht_slot = sim_head_file_offset / sizeof(uint32_t) + 1;
+        } else {
+                printf("Head and tail have different slot!\n");
+                exit(EXIT_FAILURE);
+        }
+
+        /*
+         * Receive head and tail value based on ht_slot
+         */
+        if (ht_slot > 0) {
+                fseek(sim_head_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
+                fseek(sim_tail_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
+                fread(&head, sizeof(uint32_t), 1, sim_head_file);
+                fread(&tail, sizeof(uint32_t), 1, sim_tail_file);
+        } else {
+                head = 0;
+                tail = 0;
+        }
+#endif
+}
+
+uint32_t get_ht_slot()
+{
+#ifdef SIMULATED_FLASH
+#endif
+        return ht_slot;
+}
+uint32_t get_head()
+{
+#ifdef SIMULATED_FLASH
+#endif
+        return head;
+}
+uint32_t get_tail()
+{
+#ifdef SIMULATED_FLASH
+#endif
+        return tail;
+}
+
+
+void set_head_tail(uint32_t head_new, uint32_t tail_new)
+{
+        head = head_new;
+        tail = tail_new;
+#ifdef SIMULATED_FLASH
+        /*
+         * Write new value to the simulated Security Registers
+         * If ht_slot is 64 (i.e. Sec Reg is full), truncate the file
+         */
+        if (ht_slot == 64) {
+                spinfs_erase_sec_reg_1_2();
+        }
+
+        ht_slot++;
+        fseek(sim_head_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
+        fwrite(&head, sizeof(uint32_t), 1, sim_head_file);
+        fseek(sim_tail_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
+        fwrite(&tail, sizeof(uint32_t), 1, sim_tail_file);
+
+#endif
+}
+
+#ifdef SIMULATED_FLASH
+/*
+ * Truncate the given file and write 0xFF to corresponding simlulated size
+ */
+void sim_create_flash_file(char *file)
+{
+        if (strcmp(file, SIMULATED_MAIN_FILE_PATH) == 0) {
+                printf("Formatting Main Flash (taking long time)...\n");
+
+                sim_main_file = freopen(NULL, "w", sim_main_file);
+                if (sim_main_file == NULL) {
+                        perror("Sim Main file open error");
+                        exit(EXIT_FAILURE);
+                }
+                sim_main_file = freopen(NULL, "r+", sim_main_file);
+                if (sim_main_file == NULL) {
+                        perror("Sim Main file open error");
+                        exit(EXIT_FAILURE);
+                }
+
+                for (int i = 0; i < MAIN_FLASH_SIZE; i++) {
+                        fputc(0xFF, sim_main_file);
+                }
+        } else if (strcmp(file, SIMULATED_HEAD_FILE_PATH) == 0) {
+                printf("Formatting Security Register 1.\n");
+
+                sim_head_file = freopen(NULL, "w", sim_head_file);
+                if (sim_head_file == NULL) {
+                        perror("Sim head file open error");
+                        exit(EXIT_FAILURE);
+                }
+                sim_head_file = freopen(NULL, "r+", sim_head_file);
+                if (sim_head_file == NULL) {
+                        perror("Sim head file open error");
+                        exit(EXIT_FAILURE);
+                }
+
+                for (int i = 0; i < SEC_REG_SIZE; i++) {
+                        fputc(0xFF, sim_head_file);
+                }
+        } else if (strcmp(file, SIMULATED_TAIL_FILE_PATH) == 0) {
+                printf("Formatting Security Register 2.\n");
+
+                sim_tail_file = freopen(NULL, "w", sim_tail_file);
+                if (sim_tail_file == NULL) {
+                        perror("Sim tail file open error");
+                        exit(EXIT_FAILURE);
+                }
+                sim_tail_file = freopen(NULL, "r+", sim_tail_file);
+                if (sim_tail_file == NULL) {
+                        perror("Sim tail file open error");
+                        exit(EXIT_FAILURE);
+                }
+
+                for (int i = 0; i < SEC_REG_SIZE; i++) {
+                        fputc(0xFF, sim_tail_file);
+                }
+        }
+}
+#endif
+
+/*
+ * Erase both Security Register 1 and 2 storing head and tail value
+ */
+void spinfs_erase_sec_reg_1_2()
+{
+#ifdef SIMULATED_FLASH
+        sim_create_flash_file(SIMULATED_HEAD_FILE_PATH);
+        sim_create_flash_file(SIMULATED_TAIL_FILE_PATH);
+#endif
+        ht_slot = 0;
+}
+
+int32_t spinfs_format()
+{
+        /*
+         * Format main flash
+         */
+#ifdef SIMULATED_FLASH
+        //taking long time so dont do it
+        //sim_create_flash_file(SIMULATED_MAIN_FILE_PATH);
+#endif
+
+        /*
+         * Format Security Registers 1 and 2, then reset head and tail in RAM
+         */
+        spinfs_erase_sec_reg_1_2();
+        head = 0;
+        tail = 0;
+        return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
 
 /*
  * Update head and tail by pair to SEC_REG 1 and 2

@@ -8,6 +8,10 @@ ifneq ($(VALGRIND),)
 CFLAGS += -DSPI_SPEED=25000000
 endif
 
+ifneq ($(SIM),)
+CFLAGS += -DSIMULATED_FLASH
+endif
+
 ALL_UTILS = dump_flash erase_block erase_chip erase_sector readID read write \
 			read_security write_security erase_security \
 			file_ops_example \
