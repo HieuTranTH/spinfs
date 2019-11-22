@@ -62,18 +62,69 @@ void spinfs_init()
         }
 #endif
 
-        load_head_tail();
+        read_head_tail();
+        print_head_tail_info();
 
+        spinfs_scan_for_inode_table();
+}
+
+void spinfs_scan_for_inode_table() //TODO
+{
+#ifdef SIMULATED_FLASH
+
+        int addr = head;
+        int count = 0;
+        struct spinfs_raw_inode *s = malloc(sizeof(*s));
+        //TODO check head and tail wrap around
+        while (addr < tail) {
+                printf("Address: 0x%06x\n", addr);
+                s = spinfs_read_inode(s, addr);
+                print_node_info(s);
+                spinfs_update_inode_table(s, addr);
+                addr += sizeof(*s) + s->data_size;
+                count++;
+        }
+        printf("Total count: %d\n", count);
+        print_inode_table(inode_table);
+        free(s);
+#endif
 }
 
 void spinfs_deinit()
 {
+        print_inode_table(inode_table);
         free(inode_table);
 #ifdef SIMULATED_FLASH
         fclose(sim_main_file);
         fclose(sim_head_file);
         fclose(sim_tail_file);
 #endif
+}
+
+/*
+ * ******************************************************
+ * inode table functions
+ * ******************************************************
+ */
+
+void spinfs_update_inode_table(struct spinfs_raw_inode *inode, uint32_t addr)
+{
+        printf("        Current biggest inode in inode table: %d\n", inode_table_size);
+
+        if (inode->inode_num > inode_table_size) {
+                printf("        New entry: %d, 0x%06x, %d\n", inode->inode_num, addr, inode->version);
+                inode_table_size = inode->inode_num;
+                // allocate extra memories for higher inodes
+                inode_table = realloc(inode_table, (inode_table_size + 1) * sizeof(*inode_table));
+        }
+        else {
+                printf("        Update old entry: %d, 0x%06x, %d\n", inode->inode_num, addr, inode->version);
+        }
+        //populate or update entry with current inode metadata
+        inode_table[inode->inode_num].physical_addr = addr;
+        inode_table[inode->inode_num].version = inode->version;
+
+        printf("        New biggest inode in inode table: %d\n", inode_table_size);
 }
 
 /*
@@ -85,7 +136,7 @@ void spinfs_deinit()
 /*
  * Load head and tail values from Security Registers
  */
-void load_head_tail()
+void read_head_tail()
 {
 #ifdef SIMULATED_FLASH
         /*
@@ -167,12 +218,22 @@ uint32_t get_tail()
         return tail;
 }
 
+void print_head_tail_info()
+{
+        printf("Head and tail is at slot: %d\n", ht_slot);
+        printf("Value of head: %d.\n", head);
+        printf("Value of tail: %d.\n\n", tail);
+}
 
-void set_head_tail(uint32_t head_new, uint32_t tail_new)
+void set_head_tail(uint32_t head_new, uint32_t tail_new) //TODO will be removed
 {
         head = head_new;
         tail = tail_new;
-#ifdef SIMULATED_FLASH
+        write_head_tail();
+}
+
+void write_head_tail()
+{
         /*
          * Write new value to the simulated Security Registers
          * If ht_slot is 64 (i.e. Sec Reg is full), truncate the file
@@ -182,11 +243,11 @@ void set_head_tail(uint32_t head_new, uint32_t tail_new)
         }
 
         ht_slot++;
+#ifdef SIMULATED_FLASH
         fseek(sim_head_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
         fwrite(&head, sizeof(uint32_t), 1, sim_head_file);
         fseek(sim_tail_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
         fwrite(&tail, sizeof(uint32_t), 1, sim_tail_file);
-
 #endif
 }
 
@@ -266,23 +327,101 @@ void spinfs_erase_sec_reg_1_2()
 int32_t spinfs_format()
 {
         /*
-         * Format main flash
+         * Erase main flash
          */
 #ifdef SIMULATED_FLASH
         //taking long time so dont do it
-        //sim_create_flash_file(SIMULATED_MAIN_FILE_PATH);
+        sim_create_flash_file(SIMULATED_MAIN_FILE_PATH);
 #endif
 
         /*
-         * Format Security Registers 1 and 2, then reset head and tail in RAM
+         * Erase Security Registers 1 and 2, then reset head and tail in RAM
          */
         spinfs_erase_sec_reg_1_2();
         head = 0;
         tail = 0;
+
+        print_head_tail_info();         // print info after erasing
+
+        /*
+         * Write root directory inode
+         */
+        struct spinfs_raw_inode *root_inode = malloc(sizeof(*root_inode));
+        root_inode->magic1 = SPINFS_MAGIC1;
+        strncpy(root_inode->name, "/", MAX_NAME_LEN);
+        root_inode->inode_num = 1;
+        root_inode->uid = getuid();
+        root_inode->gid = getgid();
+        root_inode->mode = S_IFDIR;
+        root_inode->flags = 0;
+        root_inode->ctime = time(NULL);
+        root_inode->mtime = time(NULL);
+        root_inode->parent_inode = 0;
+        root_inode->version = 1;
+        root_inode->magic2 = SPINFS_MAGIC2;
+        root_inode->data_size = 0;
+        spinfs_write_inode(root_inode);
+        free(root_inode);
+
+        //TODO clear inode_table
+        inode_table = realloc(inode_table, sizeof(*inode_table));
+        inode_table_size = 0;
+        spinfs_scan_for_inode_table();
+
         return 0;
 }
 
+/*
+ * Append new node to the end of the main flash, update tail and write new
+ * head, tail values to a new slot
+ */
+void spinfs_write_inode(struct spinfs_raw_inode *inode)
+{
 
+#ifdef SIMULATED_FLASH
+        fseek(sim_main_file, tail, SEEK_SET);
+        fwrite(inode, 1, sizeof(*inode) + inode->data_size, sim_main_file);
+#endif
+        spinfs_update_inode_table(inode, tail);
+        //TODO if tail > MAIN_FLASH_SIZE
+        tail += sizeof(*inode) + inode->data_size;
+        write_head_tail();
+        print_head_tail_info();
+
+        //update parent inode
+        if (inode->parent_inode != 0) {
+                spinfs_update_parent_inode(inode);
+        }
+}
+
+void spinfs_update_parent_inode(struct spinfs_raw_inode *inode)
+{
+        struct spinfs_raw_inode *parent = spinfs_read_inode(NULL, inode_table[inode->parent_inode].physical_addr);
+        print_node_info(parent);
+        //TODO get dirent and update dirent, update version, write back
+
+        free(parent);
+}
+
+struct spinfs_raw_inode *spinfs_read_inode(struct spinfs_raw_inode *inode, uint32_t addr)
+{
+#ifdef SIMULATED_FLASH
+        //fwrite(inode, 1, sizeof(*inode) + inode->data_size, sim_main_file);
+        //struct spinfs_raw_inode holder;
+        inode = realloc(inode, sizeof(*inode));     // allocate initial size
+        /*
+         * Get inode stem (without data)
+         */
+        fseek(sim_main_file, addr, SEEK_SET);
+        fread(inode, 1, sizeof(*inode), sim_main_file);
+        if (inode->data_size > 0) {
+                inode = realloc(inode, sizeof(*inode) + inode->data_size);     // allocate extra memory for data[]
+                fread(inode->data, 1, inode->data_size, sim_main_file);                    // copy extra data to the allocated struct
+        }
+#endif
+
+        return inode;
+}
 
 
 

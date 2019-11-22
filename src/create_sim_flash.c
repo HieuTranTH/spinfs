@@ -30,7 +30,7 @@ void populate_raw_inode(
         // realloc based on data_size
         *ri_dp = realloc(*ri_dp, sizeof(**ri_dp) + data_size);
         //populate the node based on parameters
-        (*ri_dp)->magic1 = SPIN_FS_MAGIC1;
+        (*ri_dp)->magic1 = SPINFS_MAGIC1;
         strncpy((*ri_dp)->name, name, MAX_NAME_LEN);
         (*ri_dp)->inode_num = inode_num;
         (*ri_dp)->mode = mode;
@@ -42,7 +42,7 @@ void populate_raw_inode(
         (*ri_dp)->parent_inode = parent_inode;
         (*ri_dp)->version = version;
         (*ri_dp)->data_size = data_size;
-        (*ri_dp)->magic2 = SPIN_FS_MAGIC2;
+        (*ri_dp)->magic2 = SPINFS_MAGIC2;
         if (data_size > 0)
                 memcpy((*ri_dp)->data, data, data_size);
 }
@@ -70,15 +70,21 @@ void update_dir_table(struct dir_entry **dt, uint32_t *size, char *name,
 
 int main(int argc, char *argv[])
 {
+#if 0
         char sim_flash[] = "sim_flash.bin";
         FILE *fp = fopen(sim_flash, "w");
         if (fp == NULL) {
                 perror("File open error");
                 exit(EXIT_FAILURE);
         }
+#endif
+
+        spinfs_init();
+        spinfs_format();
+        //spinfs_erase_sec_reg_1_2();
 
         int count = 0;
-        int current_inode_num = 0;
+        int current_inode_num = 1;
         char *current_name = NULL;
 //int current_node_size = 0;
 
@@ -100,6 +106,7 @@ int main(int argc, char *argv[])
 
         printf("Current time from Epoch: %ld, in hex 0x%lx\n", time(NULL), time(NULL));
 
+#if 0
         /*
          * new "/" node
          */
@@ -109,9 +116,11 @@ int main(int argc, char *argv[])
                         root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
-        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        //fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        spinfs_write_inode(ri);
         count++;
         ///////////////////////////////////////////////////////////////
+#endif
 
         /*
          * new "foo" node
@@ -122,8 +131,11 @@ int main(int argc, char *argv[])
                         strlen(current_name), current_name);
         // print info then write to flash
         print_node_info(ri);
-        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        //fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        spinfs_write_inode(ri);
         count++;
+
+#if 0
 
         /*
          * update "/" node
@@ -136,7 +148,8 @@ int main(int argc, char *argv[])
                         current_gid, NOT_WRITE_CTIME, 0, 2, root_p_size, (char *)root_p);
         // print info then write to flash
         print_node_info(ri);
-        fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        //fwrite(ri, 1, sizeof(*ri) + ri->data_size, fp);
+        spinfs_write_inode(ri);
         count++;
         ///////////////////////////////////////////////////////////////
 
@@ -284,6 +297,7 @@ int main(int argc, char *argv[])
         count++;
         ///////////////////////////////////////////////////////////////
 
+#endif
 
 
         printf("Total count: %d\n", count);
@@ -292,6 +306,7 @@ int main(int argc, char *argv[])
         free(root_p);
         free(dir1_p);
         free(dir2_p);
-        fclose(fp);
+        //fclose(fp);
+        spinfs_deinit();
         return 0;
 }

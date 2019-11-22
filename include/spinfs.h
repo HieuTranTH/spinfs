@@ -2,8 +2,8 @@
 #include <sys/stat.h>
 #include <time.h> /* time_t */
 
-#define SPIN_FS_MAGIC1 0x5350494e   /* SPIN */
-#define SPIN_FS_MAGIC2 0x46537631   /* FSv1 */
+#define SPINFS_MAGIC1 0x5350494e   /* SPIN */
+#define SPINFS_MAGIC2 0x46537631   /* FSv1 */
 
 #define MAX_NAME_LEN 32
 
@@ -57,19 +57,30 @@ struct inode_table_entry {
 #endif
 
 void spinfs_init();
+void spinfs_scan_for_inode_table(); //TODO
 void spinfs_deinit();
+
+/*
+ * ******************************************************
+ * inode table functions
+ * ******************************************************
+ */
+
+void spinfs_update_inode_table(struct spinfs_raw_inode *inode, uint32_t addr);
 
 /*
  * ******************************************************
  * head, tail functions
  * ******************************************************
  */
-void load_head_tail();
+void read_head_tail();
+void write_head_tail();
+void set_head_tail(uint32_t head_new, uint32_t tail_new); //TODO will be removed
 
 uint32_t get_ht_slot();
 uint32_t get_head();
 uint32_t get_tail();
-void set_head_tail(uint32_t head_new, uint32_t tail_new);
+void print_head_tail_info();
 
 
 #ifdef SIMULATED_FLASH
@@ -77,6 +88,9 @@ void sim_create_flash_file(char *file);
 #endif
 void spinfs_erase_sec_reg_1_2();
 int32_t spinfs_format();
+void spinfs_write_inode(struct spinfs_raw_inode *inode);
+void spinfs_update_parent_inode(struct spinfs_raw_inode *inode);
+struct spinfs_raw_inode *spinfs_read_inode(struct spinfs_raw_inode *inode, uint32_t addr);
 
 
 
