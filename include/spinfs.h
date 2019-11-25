@@ -57,7 +57,6 @@ struct inode_table_entry {
 #endif
 
 void spinfs_init();
-void spinfs_scan_for_inode_table(); //TODO
 void spinfs_deinit();
 
 /*
@@ -66,7 +65,10 @@ void spinfs_deinit();
  * ******************************************************
  */
 
+void spinfs_scan_for_inode_table(); //TODO
 void spinfs_update_inode_table(struct spinfs_raw_inode *inode, uint32_t addr);
+struct inode_table_entry spinfs_get_inode_table_entry(int inode_num);
+uint32_t get_inode_table_size();
 
 /*
  * ******************************************************
@@ -77,6 +79,7 @@ void read_head_tail();
 void write_head_tail();
 void set_head_tail(uint32_t head_new, uint32_t tail_new); //TODO will be removed
 
+// TODO these next 3 might not need for external code
 uint32_t get_ht_slot();
 uint32_t get_head();
 uint32_t get_tail();

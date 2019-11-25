@@ -35,6 +35,7 @@ FILE* sim_tail_file;
 
 void spinfs_init()
 {
+        printf("\nInit SPINFS -----------------------\n");
         inode_table = calloc(1, sizeof(*inode_table));
 
 #ifdef SIMULATED_FLASH
@@ -66,10 +67,12 @@ void spinfs_init()
         print_head_tail_info();
 
         spinfs_scan_for_inode_table();
+        printf("End of Init SPINFS------------------------------------------\n\n");
 }
 
 void spinfs_scan_for_inode_table() //TODO
 {
+        printf("\nScanning SPINFS -----------------------\n");
 #ifdef SIMULATED_FLASH
 
         int addr = head;
@@ -88,10 +91,13 @@ void spinfs_scan_for_inode_table() //TODO
         print_inode_table(inode_table);
         free(s);
 #endif
+        printf("End of Scanning SPINFS------------------------------------------\n\n");
 }
 
 void spinfs_deinit()
 {
+        printf("\nDeinit SPINFS -----------------------\n");
+        printf("\n");
         print_inode_table(inode_table);
         free(inode_table);
 #ifdef SIMULATED_FLASH
@@ -99,6 +105,7 @@ void spinfs_deinit()
         fclose(sim_head_file);
         fclose(sim_tail_file);
 #endif
+        printf("End of Deinit SPINFS------------------------------------------\n\n");
 }
 
 /*
@@ -109,6 +116,7 @@ void spinfs_deinit()
 
 void spinfs_update_inode_table(struct spinfs_raw_inode *inode, uint32_t addr)
 {
+        printf("\nUpdate inode table -----------------------\n");
         printf("        Current biggest inode in inode table: %d\n", inode_table_size);
 
         if (inode->inode_num > inode_table_size) {
@@ -116,15 +124,30 @@ void spinfs_update_inode_table(struct spinfs_raw_inode *inode, uint32_t addr)
                 inode_table_size = inode->inode_num;
                 // allocate extra memories for higher inodes
                 inode_table = realloc(inode_table, (inode_table_size + 1) * sizeof(*inode_table));
-        }
-        else {
+                //populate or update entry with current inode metadata
+                inode_table[inode->inode_num].physical_addr = addr;
+                inode_table[inode->inode_num].version = inode->version;
+        } else if (inode_table[inode->inode_num].version < inode->version) {
                 printf("        Update old entry: %d, 0x%06x, %d\n", inode->inode_num, addr, inode->version);
+                //populate or update entry with current inode metadata
+                inode_table[inode->inode_num].physical_addr = addr;
+                inode_table[inode->inode_num].version = inode->version;
+        } else {
+                printf("        Current inode %d entry in inode table is more recent.\n", inode->inode_num);
         }
-        //populate or update entry with current inode metadata
-        inode_table[inode->inode_num].physical_addr = addr;
-        inode_table[inode->inode_num].version = inode->version;
 
         printf("        New biggest inode in inode table: %d\n", inode_table_size);
+        printf("End of Update inode table------------------------------------------\n\n");
+}
+
+struct inode_table_entry spinfs_get_inode_table_entry(int inode_num)
+{
+        return inode_table[inode_num];
+}
+
+uint32_t get_inode_table_size()
+{
+        return inode_table_size;
 }
 
 /*
@@ -189,8 +212,8 @@ void read_head_tail()
          */
         if (ht_slot > 0) {
                 fseek(sim_head_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
-                fseek(sim_tail_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
                 fread(&head, sizeof(uint32_t), 1, sim_head_file);
+                fseek(sim_tail_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
                 fread(&tail, sizeof(uint32_t), 1, sim_tail_file);
         } else {
                 head = 0;
@@ -221,8 +244,8 @@ uint32_t get_tail()
 void print_head_tail_info()
 {
         printf("Head and tail is at slot: %d\n", ht_slot);
-        printf("Value of head: %d.\n", head);
-        printf("Value of tail: %d.\n\n", tail);
+        printf("Value of head: 0x%x, %d.\n", head, head);
+        printf("Value of tail: 0x%x, %d.\n\n", tail, tail);
 }
 
 void set_head_tail(uint32_t head_new, uint32_t tail_new) //TODO will be removed
@@ -258,7 +281,7 @@ void write_head_tail()
 void sim_create_flash_file(char *file)
 {
         if (strcmp(file, SIMULATED_MAIN_FILE_PATH) == 0) {
-                printf("Formatting Main Flash (taking long time)...\n");
+                printf("Formatting Main Flash (taking long time with Valgrind)...\n");
 
                 sim_main_file = freopen(NULL, "w", sim_main_file);
                 if (sim_main_file == NULL) {
@@ -324,13 +347,14 @@ void spinfs_erase_sec_reg_1_2()
         ht_slot = 0;
 }
 
+// TODO erase chip only, leave the format logic for mkfs util
 int32_t spinfs_format()
 {
         /*
          * Erase main flash
          */
 #ifdef SIMULATED_FLASH
-        //taking long time so dont do it
+        //taking long time with Valgrind
         sim_create_flash_file(SIMULATED_MAIN_FILE_PATH);
 #endif
 
@@ -363,9 +387,11 @@ int32_t spinfs_format()
         spinfs_write_inode(root_inode);
         free(root_inode);
 
-        //TODO clear inode_table
+        // Clear inode_table
+        printf("\nClearing inode table------------------\n");
         inode_table = realloc(inode_table, sizeof(*inode_table));
         inode_table_size = 0;
+        printf("\nEnd of Clearing inode table------------------\n");
         spinfs_scan_for_inode_table();
 
         return 0;
@@ -377,7 +403,10 @@ int32_t spinfs_format()
  */
 void spinfs_write_inode(struct spinfs_raw_inode *inode)
 {
+        printf("\nWriting inode------------------\n");
 
+        print_node_info(inode);
+        //*inode->inode_num = ++inode_table_size;
 #ifdef SIMULATED_FLASH
         fseek(sim_main_file, tail, SEEK_SET);
         fwrite(inode, 1, sizeof(*inode) + inode->data_size, sim_main_file);
@@ -389,34 +418,91 @@ void spinfs_write_inode(struct spinfs_raw_inode *inode)
         print_head_tail_info();
 
         //update parent inode
-        if (inode->parent_inode != 0) {
-                spinfs_update_parent_inode(inode);
-        }
+        //if (inode->parent_inode != 0) {
+        //        spinfs_update_parent_inode(inode);
+        //}
+        printf("\nEnd of Writing inode------------------\n");
 }
 
+#if 0
 void spinfs_update_parent_inode(struct spinfs_raw_inode *inode)
 {
+        printf("\nUpdating parent inode------------------\n");
         struct spinfs_raw_inode *parent = spinfs_read_inode(NULL, inode_table[inode->parent_inode].physical_addr);
         print_node_info(parent);
-        //TODO get dirent and update dirent, update version, write back
+        print_directory(parent);
+
+
+        //get dirent and update dirent, update version, write back
+        struct dir_entry *parent_dir_table = (struct dir_entry *)parent->data;
+        int parent_dir_table_size = parent->data_size / sizeof(struct dir_entry);
+        // check child file is already present
+        // TODO if file delete, remove entry from dir table, check inode mode DELETED flag
+        int new_dirent_flag = 1;
+        for (int i = 0; i < parent_dir_table_size; i++) {
+                printf("i: %d\n", i);
+                if (strncmp(inode->name, parent_dir_table[i].name, MAX_NAME_LEN) == 0) {
+                        printf("Name matches existing file.\n");
+                        new_dirent_flag = 0;
+                        break;
+                }
+        }
+        // Adding new directory entry
+        if (new_dirent_flag == 1) {
+                printf("Adding new directory entry in %.32s directory.\n", parent->name);
+                parent_dir_table_size++;
+                parent->data_size += sizeof(struct dir_entry);
+                parent = realloc(parent, sizeof(*parent) + parent->data_size);
+
+                parent_dir_table = (struct dir_entry *)parent->data;
+                strncpy(parent_dir_table[parent_dir_table_size - 1].name, inode->name, MAX_NAME_LEN);
+                parent_dir_table[parent_dir_table_size - 1].inode_num = inode->inode_num;
+        }
+
+        //Update parent inode metadata
+        parent->mtime = time(NULL);
+        parent->version++;
+        printf("\n");
+        print_node_info(parent);
+        print_directory(parent);
+
+        //Write new parent inode structure to flash
+#ifdef SIMULATED_FLASH
+        fseek(sim_main_file, tail, SEEK_SET);
+        fwrite(parent, 1, sizeof(*parent) + parent->data_size, sim_main_file);
+#endif
+
+        //Update inode_table, tail, head accordingly
+        spinfs_update_inode_table(parent, tail);
+        //TODO if tail > MAIN_FLASH_SIZE
+        tail += sizeof(*inode) + parent->data_size;
+        write_head_tail();
+        print_head_tail_info();
 
         free(parent);
+        printf("End of Updating parent inode------------------\n\n");
 }
+#endif
 
+/*
+ * Must free the return pointer after use
+ */
 struct spinfs_raw_inode *spinfs_read_inode(struct spinfs_raw_inode *inode, uint32_t addr)
 {
-#ifdef SIMULATED_FLASH
-        //fwrite(inode, 1, sizeof(*inode) + inode->data_size, sim_main_file);
-        //struct spinfs_raw_inode holder;
         inode = realloc(inode, sizeof(*inode));     // allocate initial size
+        if (inode == NULL) {
+                perror("Allocation error");
+                exit(EXIT_FAILURE);
+        }
         /*
          * Get inode stem (without data)
          */
+#ifdef SIMULATED_FLASH
         fseek(sim_main_file, addr, SEEK_SET);
         fread(inode, 1, sizeof(*inode), sim_main_file);
         if (inode->data_size > 0) {
                 inode = realloc(inode, sizeof(*inode) + inode->data_size);     // allocate extra memory for data[]
-                fread(inode->data, 1, inode->data_size, sim_main_file);                    // copy extra data to the allocated struct
+                fread(inode->data, 1, inode->data_size, sim_main_file);         // copy extra data to the allocated struct
         }
 #endif
 
@@ -457,11 +543,13 @@ void print_node_info(struct spinfs_raw_inode *ri)
 
 void print_inode_table(struct inode_table_entry *it)
 {
+        printf("Printing inode table------------------------------------------\n\n");
 
         printf("    I-node    |    Address     |   Version    \n");
         for (int i = 1; i <= inode_table_size; i++) {
                 printf("     %4d         0x%06x           %4d   \n", i, it[i].physical_addr, it[i].version);
         }
+        printf("End of Printing inode table------------------------------------------\n\n");
 }
 
 void ls_file(struct spinfs_raw_inode *inode)
@@ -490,9 +578,16 @@ void print_directory(struct spinfs_raw_inode *inode)
         }
 }
 
+/*
+ * Return inode number if file is found in the dirent table of the parent directory
+ * Return 0 if parent inode is not a directory, or file is not found
+ * TODO with current dir entry struct only 1 instance of name can be presented
+ * in a dir table, even they are different types (i.e. REG and DIR cannot have
+ * the same name).
+ */
 uint32_t find_file_in_dir(struct spinfs_raw_inode *inode, char *filename)
 {
-        // TODO check inode is a directory
+        // check inode is a directory
         if (S_ISREG(inode->mode)) {
                 printf("%.*s is a regular file.\n", MAX_NAME_LEN, inode->name);
                 return 0;
@@ -505,6 +600,7 @@ uint32_t find_file_in_dir(struct spinfs_raw_inode *inode, char *filename)
         for (int i = 0; i < dir_file_count; i++) {
                 printf("Index %d, %.*s, target %s :", i, MAX_NAME_LEN, ((struct dir_entry *)inode->data)[i].name, filename);
                 if (strncmp(filename, ((struct dir_entry *)inode->data)[i].name, MAX_NAME_LEN) == 0) {
+                        // file appears in dir table already ensures that file is not yet deleted
                         printf("matched.\n");
                         printf("\n");
                         return ((struct dir_entry *)inode->data)[i].inode_num;

@@ -1,27 +1,10 @@
-#if 0
-        head = 0x000000;
-        tail = 0x000000;
-        struct spinfs_raw_inode *root_inode = createInode(NULL, 0);
-        //root_inode->name[0] = '/';
-        strncpy(root_inode->name, "This_is_the_name_of_root_directory", 32);
-        root_inode->inode_num = 255;
-        root_inode->parent_inode_num = 0;
-        root_inode->data_size = 0;
-        root_inode->version = 1;
-
-        printf("Current i-node size: %d bytes.\n", sizeof(*root_inode));
-        print_buffer((unsigned char*)root_inode, sizeof(*root_inode));
-
-        int fd_spi = spi_init();
-        //spi_write_data(0x020000, (unsigned char*)root_inode, sizeof(*root_inode));
-        spi_close(fd_spi);
-        free(root_inode);
-        return 0;
-#endif
-
-#include <sys/stat.h>
-#include "spi_flash.h"
 #include "spinfs.h"
+#include "spi_flash.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>           // stat
+#include <libgen.h>             // basename
 
 void print_usage()
 {
@@ -31,9 +14,10 @@ void print_usage()
         fprintf(stderr, "\n");
 }
 
+
 int main(int argc, char *argv[])
 {
-        if (argc != 3) {
+        if (argc != 2) {
                 printf("Too many or too less arguments\n\n");
                 print_usage();
                 exit(EXIT_FAILURE);
@@ -41,102 +25,238 @@ int main(int argc, char *argv[])
         print_usage();
 
         /*
-         * Direction of the transfer
-         * 1 - From host to flash
-         * 0 - From flash to host
-         */
-        int t_direct = 1;
-
-        // What if both paths are on flash?
-        if (strncmp(argv[1], "/spinfs/", 7) == 0) {
-                t_direct = 0;
-        } else if (strncmp(argv[2], "/spinfs/", 7) == 0) {
-                t_direct = 1;
-        } else {
-                printf("ERROR: One of the path should be on flash.\n");
-                exit(EXIT_FAILURE);
-        }
-        printf("Direction of the transfer: %d\n", t_direct);
-
-        /*
          * Find source file size
          */
-        struct stat info;
-        if (t_direct == 1) {
-                if (stat(argv[1], &info) == -1) {
-                        perror("Stat file error");
-                        exit(EXIT_FAILURE);
-                }
-                printf("File %s has size: %ld\n", argv[1], info.st_size);
+        struct stat src_st;
+        if (stat(argv[1], &src_st) == -1) {
+                perror("Stat file error");
+                exit(EXIT_FAILURE);
         }
+        if (!S_ISREG(src_st.st_mode)) {
+                printf("Source is not a regular file.\n");
+                exit(EXIT_FAILURE);
+        }
+        printf("File %s has size: %ld\n\n", argv[1], src_st.st_size);
 
         /*
          * Read content of file to buffer
          */
-        FILE *fp = fopen(argv[1], "r");
-        if (fp == NULL) {
+        FILE *src_file = fopen(argv[1], "r");
+        if (src_file == NULL) {
                 perror("File open error");
                 exit(1);
         }
 
-        // Allocate buffer
-        // Maybe dont need to have separated buffer, can read file content to
-        // inode.data directly
-        unsigned char *buffer = calloc(info.st_size, 1);
-        if (buffer == NULL) {
-                perror("Allocation error:");
-                exit(5);
+        spinfs_init();
+        //spinfs_format();
+        //spinfs_erase_sec_reg_1_2();
+
+        //TODO check existence of new file name in target directory, if yes
+        //modify the file with the same inode, if not write a new inode with
+        //new inode_num
+        //TODO get parent_inode based on the path of the destination
+
+        char *dest = "/";
+        uint32_t target_inode_num = 1;  //start traversing from root directory
+        if (dest[0] != '/') {
+                printf("Path needs to be absolute!\n");
+                exit(EXIT_FAILURE);
+        }
+        printf("\nDestination path: %s\n", dest);
+
+
+        char *src_basename = basename(argv[1]);
+
+
+        struct spinfs_raw_inode *parent = malloc(sizeof(*parent));
+        parent = spinfs_read_inode(parent, spinfs_get_inode_table_entry(target_inode_num).physical_addr);
+        struct dir_entry *parent_dir_table = (struct dir_entry *)parent->data;
+        int parent_dir_table_size = parent->data_size / sizeof(struct dir_entry);
+        /*
+         * Check existing file in parent directory
+         */
+        int dest_not_exist_flag = 1;
+        int i = 0;
+        for (i = 0; i < parent_dir_table_size; i++) {
+                printf("i: %d\n", i);
+                if (strncmp(src_basename, parent_dir_table[i].name, MAX_NAME_LEN) == 0) {
+                        printf("Name matches existing file.\n");
+                        //TODO handle case when matches existing file is a directory
+                        dest_not_exist_flag = 0;
+                        break;
+                }
         }
 
-        //Read file content to buffer
-        unsigned char c;
-        if (fread(buffer, 1, info.st_size, fp) == 0) {
-                perror("EOF error");
-                printf("feof return: %d\n", feof(fp));
-                printf("ferror return: %d\n", ferror(fp));
+        struct spinfs_raw_inode *new_inode = malloc(sizeof(*new_inode));
+
+        /*
+         * Destination file is not existed
+         */
+        if (dest_not_exist_flag) {
+
+                new_inode = realloc(new_inode, sizeof(*new_inode) + src_st.st_size);
+
+                new_inode->magic1 = SPINFS_MAGIC1;
+                strncpy(new_inode->name, src_basename, MAX_NAME_LEN);
+                new_inode->inode_num = get_inode_table_size() + 1;
+                new_inode->uid = getuid();
+                new_inode->gid = getgid();
+                new_inode->mode = S_IFREG;
+                new_inode->flags = 0;
+                new_inode->ctime = time(NULL);
+                new_inode->mtime = time(NULL);
+                new_inode->parent_inode = parent->inode_num;
+                new_inode->version = 1;
+                new_inode->data_size = src_st.st_size;
+                new_inode->magic2 = SPINFS_MAGIC2;
+                if (new_inode->data_size > 0) {
+                        fseek(src_file, 0, SEEK_SET);
+                        fread(new_inode->data, 1, new_inode->data_size, src_file);
+                }
+
+
+                /*
+                 * Adding new directory entry
+                 */
+                printf("Adding new directory entry in %.*s directory.\n", MAX_NAME_LEN, parent->name);
+                parent_dir_table_size++;
+                // Allocate extra memory for 1 more entry
+                parent->data_size += sizeof(struct dir_entry);
+                parent = realloc(parent, sizeof(*parent) + parent->data_size);
+
+                // Assign new value for the new entry
+                parent_dir_table = (struct dir_entry *)parent->data;
+                strncpy(parent_dir_table[parent_dir_table_size - 1].name, new_inode->name, MAX_NAME_LEN);
+                parent_dir_table[parent_dir_table_size - 1].inode_num = new_inode->inode_num;
+
+        } else {
+                printf("Destination file exists, modifying...\n");
+
+                int dest_inode_num = parent_dir_table[i].inode_num;
+                printf("inode: %d\n", dest_inode_num);
+                new_inode = spinfs_read_inode(new_inode, spinfs_get_inode_table_entry(dest_inode_num).physical_addr);
+                //print_node_info(new_inode);
+
+                // Existing dest file must be regular
+                if (!S_ISREG(new_inode->mode)) {
+                        printf("Existing destination is not a regular file.\n");
+                        exit(EXIT_FAILURE);
+                }
+                new_inode->uid = getuid();
+                new_inode->gid = getgid();
+                new_inode->mtime = time(NULL);
+                new_inode->parent_inode = parent->inode_num;
+                ++new_inode->version;
+                new_inode->data_size = src_st.st_size;
+                if (new_inode->data_size > 0) {
+                        new_inode = realloc(new_inode, sizeof(*new_inode) + new_inode->data_size);
+                        fread(new_inode->data, 1, new_inode->data_size, src_file);
+                }
+
         }
-        print_buffer(buffer, info.st_size);
+
+        spinfs_write_inode(new_inode);
+
+        // Update parent inode and write to flash
+        parent->mtime = time(NULL);
+        ++parent->version;
         printf("\n");
+        print_node_info(parent);
+        print_directory(parent);
+        spinfs_write_inode(parent);
 
-        //Create spinfs inode with buffer in data
-        struct spinfs_raw_inode *next = createInode(buffer, info.st_size);
-        printf("Size of the next i-node: %ld\n", sizeof(*next) + info.st_size);
-        print_buffer((unsigned char*)next, sizeof(*next) + info.st_size);
 
-        int fd_spi = spi_init();
-        spi_write_data(0x030000, (unsigned char*)next, sizeof(*next) + info.st_size);
-        spi_close(fd_spi);
 
-        free(next);
-        free(buffer);
-        fclose(fp);
 
 #if 0
-        int addr = strtol(argv[1], NULL, 16);
-        int count = argc - 2;
 
-        unsigned char *buffer = calloc(count, sizeof(char));
-        if (buffer == NULL) {
-                perror("Allocation error:");
-                exit(5);
+        printf("\nUpdating parent inode------------------\n");
+        struct spinfs_raw_inode *parent = spinfs_read_inode(NULL, inode_table[inode->parent_inode].physical_addr);
+        print_node_info(parent);
+        print_directory(parent);
+
+
+        //get dirent and update dirent, update version, write back
+        struct dir_entry *parent_dir_table = (struct dir_entry *)parent->data;
+        int parent_dir_table_size = parent->data_size / sizeof(struct dir_entry);
+        // check child file is already present
+        // TODO if file delete, remove entry from dir table, check inode mode DELETED flag
+        int dest_not_exist_flag = 1;
+        for (int i = 0; i < parent_dir_table_size; i++) {
+                printf("i: %d\n", i);
+                if (strncmp(inode->name, parent_dir_table[i].name, MAX_NAME_LEN) == 0) {
+                        printf("Name matches existing file.\n");
+                        dest_not_exist_flag = 0;
+                        break;
+                }
+        }
+        // Adding new directory entry
+        if (dest_not_exist_flag == 1) {
+                printf("Adding new directory entry in %.32s directory.\n", parent->name);
+                parent_dir_table_size++;
+                parent->data_size += sizeof(struct dir_entry);
+                parent = realloc(parent, sizeof(*parent) + parent->data_size);
+
+                parent_dir_table = (struct dir_entry *)parent->data;
+                strncpy(parent_dir_table[parent_dir_table_size - 1].name, inode->name, MAX_NAME_LEN);
+                parent_dir_table[parent_dir_table_size - 1].inode_num = inode->inode_num;
         }
 
-        long int strtol_buf = 0;
-        /*
-         * Populate write buffer with the rest of command line parameters
-         */
-        for (int i = 0; i < count; i++) {
-                strtol_buf = strtol(argv[i + 2], NULL, 16);
-                buffer[i] = *(char*)&strtol_buf;
-        }
+        //Update parent inode metadata
+        parent->mtime = time(NULL);
+        parent->version++;
+        printf("\n");
+        print_node_info(parent);
+        print_directory(parent);
 
-        int fd_spi = spi_init();
-
-        int ret = spi_write_data(addr, buffer, count);
-
-        spi_close(fd_spi);
-        free(buffer);
+        //Write new parent inode structure to flash
+#ifdef SIMULATED_FLASH
+        fseek(sim_main_file, tail, SEEK_SET);
+        fwrite(parent, 1, sizeof(*parent) + parent->data_size, sim_main_file);
 #endif
 
+        //Update inode_table, tail, head accordingly
+        spinfs_update_inode_table(parent, tail);
+        //TODO if tail > MAIN_FLASH_SIZE
+        tail += sizeof(*inode) + parent->data_size;
+        write_head_tail();
+        print_head_tail_info();
+
+        free(parent);
+        printf("End of Updating parent inode------------------\n\n");
+#if 1
+        struct spinfs_raw_inode *new_inode =
+                malloc(sizeof(*new_inode) + src_st.st_size);
+        new_inode->magic1 = SPINFS_MAGIC1;
+        strncpy(new_inode->name, basename(argv[1]), MAX_NAME_LEN);
+        new_inode->inode_num = 2;
+        new_inode->uid = getuid();
+        new_inode->gid = getgid();
+        new_inode->mode = S_IFREG;
+        new_inode->flags = 0;
+        new_inode->ctime = time(NULL);
+        new_inode->mtime = time(NULL);
+        new_inode->parent_inode = 1;
+        new_inode->version = 2;
+        new_inode->magic2 = SPINFS_MAGIC2;
+        new_inode->data_size = src_st.st_size;
+        if (new_inode->data_size > 0)
+                //memcpy(new_inode->data, data, data_size);
+                fread(new_inode->data, 1, new_inode->data_size, src_file);
+        spinfs_write_inode(new_inode);
+
+        free(new_inode);
+#endif
+#endif
+
+
+
+
+
+
+        free(new_inode);
+        free(parent);
+        fclose(src_file);
+        spinfs_deinit();
         return 0;
 }

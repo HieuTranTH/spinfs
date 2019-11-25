@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
                 // target i-node is root directory
                 target_inode_num = 1;
         } else {
-                // TODO get current directory name from path
+                // get current directory name from path
                 while (token != NULL) {
                         /*
                         printf("\npath: %s\n", path);
