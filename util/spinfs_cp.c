@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
                 exit(1);
         }
 
-        spinfs_init();
+        spinfs_init(0);
         //spinfs_format();
         //spinfs_erase_sec_reg_1_2();
 

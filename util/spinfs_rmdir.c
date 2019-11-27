@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
         char *path = argv[1];
         printf("Path is \"%s\"\n", path);
 
-        spinfs_init();
+        spinfs_init(0);
         if (remove_dir(path) == -1) {
                 perror("RMDIR error");
                 exit(EXIT_FAILURE);

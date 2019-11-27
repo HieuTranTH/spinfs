@@ -84,7 +84,7 @@ void spinfs_create_sim_flash(char *file)
 }
 #endif
 
-int spinfs_init()
+int spinfs_init(int mkfs)
 {
         itable = calloc(1, sizeof(*itable)); /* initialize index 0 to 0 */
 #ifdef SIMULATED_FLASH
@@ -114,13 +114,16 @@ int spinfs_init()
         fd_spi = spi_init();
 #endif
 
-        spinfs_read_ht_slot();
-        if (ht_slot == 0)
-                return -1;
-        spinfs_read_head_tail();
-        print_head_tail_info(__func__);
+        /* Skip scanning when doing mkfs */
+        if(!mkfs) {
+                spinfs_read_ht_slot();
+                if (ht_slot == 0)
+                        return -1;
+                spinfs_read_head_tail();
+                print_head_tail_info(__func__);
 
-        spinfs_scan_fs();
+                spinfs_scan_fs();
+        }
         return 0;
 }
 

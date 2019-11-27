@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
         char *path = argv[1];
         printf("Path is \"%s\"\n", path);
 
-        spinfs_init();
+        spinfs_init(0);
         if (remove_file(path) == -1) {
                 perror("RM error");
                 exit(EXIT_FAILURE);

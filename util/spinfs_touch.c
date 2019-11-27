@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
         target_basename = basename(bnamec);
         target_dirname = dirname(dnamec);
 
-        spinfs_init();
+        spinfs_init(0);
         if (touch_inode(target_basename, target_dirname) == -1) {
                 perror("TOUCH error");
                 exit(EXIT_FAILURE);

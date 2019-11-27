@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 {
         print_usage();
 
-        if (spinfs_init() == -1) {
+        if (spinfs_init(1) == -1) {
                 printf("Flash error!\n");
         }
         if (format() == -1) {
