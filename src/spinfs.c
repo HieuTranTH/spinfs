@@ -293,12 +293,17 @@ void spinfs_update_itable(struct spinfs_raw_inode *i, uint32_t addr)
 {
 
         if (i->inode_num > itable_size) {
+                int old_itable_size = itable_size;
                 itable_size = i->inode_num;     /* itable size is the current biggest inode */
                 // allocate extra memories for higher inodes
                 itable = realloc(itable, (itable_size + 1) * sizeof(*itable));
                 //populate or update entry with current i metadata
                 itable[i->inode_num].physical_addr = addr;
                 itable[i->inode_num].version = i->version;
+                /* Initialized the other newly allocated itable entry */
+                for (old_itable_size++; old_itable_size < itable_size;
+                                old_itable_size++)
+                        itable[old_itable_size].version = 0;
         } else if (itable[i->inode_num].version < i->version) {
                 obsolete_count++;
                 //populate or update entry with current i metadata
