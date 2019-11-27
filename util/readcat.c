@@ -2,9 +2,9 @@
 
 void print_usage()
 {
-        fprintf(stderr, "####### Read some bytes at a Security Register address #######\n");
-        fprintf(stderr, "Format: read_security [address] [bytes]\n");
-        fprintf(stderr, "### address default = 0x001000 ###\n");
+        fprintf(stderr, "####### Read some bytes at some address #######\n");
+        fprintf(stderr, "Format: read [address] [bytes]\n");
+        fprintf(stderr, "### address default = 0x000000 ###\n");
         fprintf(stderr, "### bytes default   = 256      ###\n");
         fprintf(stderr, "\n");
 }
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
                 count = 256;
         }
         else if (argc == 1) {
-                addr = 0x001000;
+                addr = 0x000000;
                 count = 256;
         }
         print_usage();
@@ -39,10 +39,12 @@ int main(int argc, char *argv[])
 
         int fd_spi = spi_init();
 
-        int ret = spi_read_sec_reg(addr, buffer, count);
+        int ret = spi_read_data(addr, buffer, count);
 
-        printf("Data sequence of %d byte(s) at address %06x is:\n", count, addr);
-        print_buffer(buffer, count);
+        printf("Data sequence of %d byte(s) at address %06x is written to readcat_out.bin\n", count, addr);
+        FILE *fp = fopen("readcat_out.bin", "w");
+        for (int i = 0; i < count; i++) fputc(buffer[i], fp);
+        fclose(fp);
 
         spi_close(fd_spi);
         free(buffer);

@@ -118,7 +118,7 @@ int spi_erase_sector(int addr)
         printf("Erasing a sector of 4 KiB at address %06x (region %06x - %06x) ...\n", addr, erase_start, erase_end);
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, buf_size);
-        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+        while (spi_read_BUSY_bit());                   //polling for BUSY bit to be cleared
         printf("Finish erasing!\n");
 
         return ret;
@@ -146,7 +146,7 @@ int spi_erase_block(int addr)
         printf("Erasing a block of 64 KiB at address %06x (region %06x - %06x) ...\n", addr, erase_start, erase_end);
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, buf_size);
-        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+        while (spi_read_BUSY_bit());                   //polling for BUSY bit to be cleared
         printf("Finish erasing!\n");
 
         return ret;
@@ -164,7 +164,7 @@ int spi_erase_chip(void)
         printf("Erasing the whole chip (8 MiB) (region %06x - %06x) ...\n", STARTING_ADDRESS, ENDING_ADDRESS);
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, &buf, 1);
-        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+        while (spi_read_BUSY_bit());                   //polling for BUSY bit to be cleared
         printf("Finish erasing!\n");
 
         return ret;
@@ -255,7 +255,7 @@ int spi_write_data(int addr, unsigned char *buf, int count)
                                 tr_size - BUFFER_RESERVED_BYTE);
                 spi_write_enable();
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
-                while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+                while (spi_read_BUSY_bit());                   //polling for BUSY bit to be cleared
                 count -= tr_size - BUFFER_RESERVED_BYTE;
                 buf_offset += tr_size - BUFFER_RESERVED_BYTE;
                 addr += tr_size - BUFFER_RESERVED_BYTE;
@@ -273,8 +273,8 @@ int spi_write_data(int addr, unsigned char *buf, int count)
 
 int spi_read_BUSY_bit(void)
 {
-        int busy;
-        unsigned char buf[2];
+        int busy = 0;
+        unsigned char buf[2] = {0};
         //Populate buffer to send
         buf[0] = READ_STATUS_REGISTER_1;
         wiringPiSPIDataRW(SPI_CHANNEL, buf, 2);
@@ -340,7 +340,7 @@ int spi_write_sec_reg(int addr, unsigned char *buf, int count)
                                 tr_size - BUFFER_RESERVED_BYTE);
                 spi_write_enable();
                 ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, tr_size);
-                while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+                while (spi_read_BUSY_bit());                   //polling for BUSY bit to be cleared
                 count -= tr_size - BUFFER_RESERVED_BYTE;
                 buf_offset += tr_size - BUFFER_RESERVED_BYTE;
                 addr += tr_size - BUFFER_RESERVED_BYTE;
@@ -375,7 +375,7 @@ int spi_erase_sec_reg(int addr)
         printf("Erasing Security Register at address %06x (region %06x - %06x) ...\n", addr, erase_start, erase_end);
         spi_write_enable();
         ret = wiringPiSPIDataRW(SPI_CHANNEL, static_buffer, buf_size);
-        while (spi_read_BUSY_bit()) {}                  //polling for BUSY bit to be cleared
+        while (spi_read_BUSY_bit());                   //polling for BUSY bit to be cleared
         printf("Finish erasing!\n");
 
         return ret;
