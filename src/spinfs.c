@@ -1,5 +1,6 @@
 #include "spinfs.h"
 #include "spi_flash.h"
+#include <errno.h>
 
 /*
  * Global variables
@@ -333,6 +334,10 @@ struct spinfs_raw_inode *spinfs_read_inode(struct spinfs_raw_inode *i,
 struct spinfs_raw_inode *spinfs_get_inode_from_inum(struct spinfs_raw_inode *i,
         uint32_t inum)
 {
+        if (inum > itable_size) {
+                errno = EINVAL;
+                return NULL;
+        }
         uint32_t addr = itable[inum].physical_addr;
         i = spinfs_read_inode(i, addr);
         return i;
@@ -390,13 +395,14 @@ void spinfs_format()
 
 /*
  * Return the i-node number if name is in dir inode, 0 if not or inode is not dir
+ * Return 1 if is not a directory, this is accepted since this function will
+ * never return inum 1, which is root directory
  */
 uint32_t spinfs_is_name_in_dir(struct spinfs_raw_inode *s, char *name)
 {
         if (!S_ISDIR(s->mode)) {
-                printf("In function %s, i-node %d is not a directory!\n",
-                                __func__, s->inode_num);
-                return 0;
+                errno = ENOTDIR;
+                return 1;
         }
         int dirent_count = s->data_size / sizeof(struct dir_entry);
         /* loop through all dir entries and compare with name */
@@ -406,6 +412,7 @@ uint32_t spinfs_is_name_in_dir(struct spinfs_raw_inode *s, char *name)
                         MAX_NAME_LEN) == 0) {
                         // file appears in dir table already ensures
                         // that file is not yet deleted
+                        errno = EEXIST;
                         return ((struct dir_entry *)s->data)[i].inode_num;
                 }
         }
@@ -423,6 +430,7 @@ uint32_t spinfs_check_valid_path(char *path)
         uint32_t inum = 1;
         if ((strlen(path) <= 0) || (path[0] != '/')) {
                 printf("SPINFS path has to be absolute!\n");
+                errno = EINVAL;
                 return 0;
         }
 
@@ -438,7 +446,10 @@ uint32_t spinfs_check_valid_path(char *path)
                 s = spinfs_read_inode(s, itable[inum].physical_addr);
                 /* inum now reflects the token i-node */
                 inum = spinfs_is_name_in_dir(s, token);
-                if (inum == 0) break;   /* token is not found */
+                if (inum == 0) {   /* token is not found */
+                        errno = ENOENT;
+                        break;
+                }
 
                 /* get the next token in path */
                 token = strtok(NULL, "/");
@@ -476,7 +487,7 @@ void print_inode_info(struct spinfs_raw_inode *i, const char *caller)
         printf("Raw metadata:\n");
         print_buffer((unsigned char *)i, sizeof(*i));
         /* Print details */
-        printf("Magic 1             : %*.*s\n", MAX_NAME_LEN, 4, (char *)&(i->magic1));
+        printf("Magic 1             : %*.*s\n", MAX_NAME_LEN, 4, (char *)&i->magic1);
         printf("Name                : %*.*s\n", MAX_NAME_LEN, MAX_NAME_LEN, i->name);
         printf("I-node number       : %*d\n", MAX_NAME_LEN, i->inode_num);
         printf("Mode                : %*s\n", MAX_NAME_LEN,S_ISDIR(i->mode) ? "Directory" : "Regular File");
@@ -488,7 +499,7 @@ void print_inode_info(struct spinfs_raw_inode *i, const char *caller)
         printf("Parent i-node number: %*d\n", MAX_NAME_LEN, i->parent_inode);
         printf("Version             : %*d\n", MAX_NAME_LEN, i->version);
         printf("Data size           : %*d\n", MAX_NAME_LEN, i->data_size);
-        printf("Magic 2             : %*.*s\n", MAX_NAME_LEN, 4, (char *)&(i->magic2));
+        printf("Magic 2             : %*.*s\n", MAX_NAME_LEN, 4, (char *)&i->magic2);
 
         if (i->data_size > 0) {
                 printf("\nRaw data segment:\n");
