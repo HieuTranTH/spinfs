@@ -274,7 +274,7 @@ int spi_write_data(int addr, unsigned char *buf, int count)
 int spi_read_BUSY_bit(void)
 {
         int busy = 0;
-        unsigned char buf[2];
+        unsigned char buf[2] = {0};
         //Populate buffer to send
         buf[0] = READ_STATUS_REGISTER_1;
         wiringPiSPIDataRW(SPI_CHANNEL, buf, 2);
