@@ -76,6 +76,7 @@ void spinfs_write_head_tail();
 void spinfs_scan_fs();
 void spinfs_update_itable(struct spinfs_raw_inode *i, uint32_t addr);
 void spinfs_erase_itable();
+uint32_t spinfs_get_next_avail_inum();
 
 /*
  * ******************************************************
@@ -84,8 +85,11 @@ void spinfs_erase_itable();
  */
 struct spinfs_raw_inode *spinfs_read_inode(struct spinfs_raw_inode *i,
         uint32_t addr);
+struct spinfs_raw_inode *spinfs_get_inode_from_inum(struct spinfs_raw_inode *i,
+        uint32_t inum);
 int spinfs_check_valid_inode(struct spinfs_raw_inode *i);
 void spinfs_write_inode(struct spinfs_raw_inode *i);
+uint32_t spinfs_is_name_in_dir(struct spinfs_raw_inode *s, char *name);
 
 /*
  * ******************************************************
@@ -95,6 +99,7 @@ void spinfs_write_inode(struct spinfs_raw_inode *i);
 void spinfs_erase_fs();
 void spinfs_erase_sec_reg_1_2();
 void spinfs_format();
+uint32_t spinfs_check_valid_path(char *path);
 
 /*
  * ******************************************************

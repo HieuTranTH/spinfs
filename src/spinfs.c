@@ -279,6 +279,11 @@ void spinfs_erase_itable()
         itable_size = 0;
 }
 
+uint32_t spinfs_get_next_avail_inum()
+{
+        return itable_size + 1;
+}
+
 /*
  * Check if i-node has correct magic numbers
  * TODO check CRC checksum
@@ -325,6 +330,32 @@ struct spinfs_raw_inode *spinfs_read_inode(struct spinfs_raw_inode *i,
         return i;
 }
 
+struct spinfs_raw_inode *spinfs_get_inode_from_inum(struct spinfs_raw_inode *i,
+        uint32_t inum)
+{
+        uint32_t addr = itable[inum].physical_addr;
+        i = spinfs_read_inode(i, addr);
+        return i;
+}
+
+/*
+ * Append new node to the end of the main flash, update tail and write new
+ * head, tail values to a new slot
+ */
+void spinfs_write_inode(struct spinfs_raw_inode *i)
+{
+        print_inode_info(i, __func__);
+#ifdef SIMULATED_FLASH
+        fseek(sim_main_file, tail, SEEK_SET);
+        fwrite(i, 1, sizeof(*i) + i->data_size, sim_main_file);
+#endif
+        spinfs_update_itable(i, tail);
+        //TODO if tail > MAIN_FLASH_SIZE
+        tail += sizeof(*i) + i->data_size;
+        spinfs_write_head_tail();
+        print_head_tail_info(__func__);
+}
+
 void spinfs_erase_fs()
 {
 #ifdef SIMULATED_FLASH
@@ -356,22 +387,64 @@ void spinfs_format()
         print_head_tail_info(__func__);         // print info after erasing
         spinfs_erase_itable();
 }
+
 /*
- * Append new node to the end of the main flash, update tail and write new
- * head, tail values to a new slot
+ * Return the i-node number if name is in dir inode, 0 if not or inode is not dir
  */
-void spinfs_write_inode(struct spinfs_raw_inode *i)
+uint32_t spinfs_is_name_in_dir(struct spinfs_raw_inode *s, char *name)
 {
-        print_inode_info(i, __func__);
-#ifdef SIMULATED_FLASH
-        fseek(sim_main_file, tail, SEEK_SET);
-        fwrite(i, 1, sizeof(*i) + i->data_size, sim_main_file);
-#endif
-        spinfs_update_itable(i, tail);
-        //TODO if tail > MAIN_FLASH_SIZE
-        tail += sizeof(*i) + i->data_size;
-        spinfs_write_head_tail();
-        print_head_tail_info(__func__);
+        if (!S_ISDIR(s->mode)) {
+                printf("In function %s, i-node %d is not a directory!\n",
+                                __func__, s->inode_num);
+                return 0;
+        }
+        int dirent_count = s->data_size / sizeof(struct dir_entry);
+        /* loop through all dir entries and compare with name */
+        for (int i = 0; i < dirent_count; i++) {
+                if (strncmp(name,
+                        ((struct dir_entry *)s->data)[i].name,
+                        MAX_NAME_LEN) == 0) {
+                        // file appears in dir table already ensures
+                        // that file is not yet deleted
+                        return ((struct dir_entry *)s->data)[i].inode_num;
+                }
+        }
+        return 0;
+}
+
+/*
+ * Return the i-node number if path is valid, 0 if not
+ * TODO with current dir entry struct only 1 instance of name can be presented
+ * in a dir table, even they are different types (i.e. REG and DIR cannot have
+ * the same name).
+ */
+uint32_t spinfs_check_valid_path(char *path)
+{
+        uint32_t inum = 1;
+        if ((strlen(path) <= 0) || (path[0] != '/')) {
+                printf("SPINFS path has to be absolute!\n");
+                return 0;
+        }
+
+        struct spinfs_raw_inode *s = NULL;
+        char *token = strtok(path, "/");
+        if (token == NULL) {
+                return 1;
+        }
+        while (token != NULL) {
+                /*
+                 * Check if token is in current inum
+                 */
+                s = spinfs_read_inode(s, itable[inum].physical_addr);
+                /* inum now reflects the token i-node */
+                inum = spinfs_is_name_in_dir(s, token);
+                if (inum == 0) break;   /* token is not found */
+
+                /* get the next token in path */
+                token = strtok(NULL, "/");
+        }
+        free(s);
+        return inum;
 }
 
 void print_head_tail_info(const char *caller)
