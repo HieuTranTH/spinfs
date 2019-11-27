@@ -5,6 +5,7 @@
 /*
  * Global variables
  */
+int fd_spi;
 uint32_t head, tail;
 uint32_t ht_slot;       /* determine position of newest head and tail in Sec Regs*/
 struct inode_table_entry *itable; /* pointer to dynamic i-node table */
@@ -131,6 +132,8 @@ int spinfs_deinit()
         fclose(sim_main_file);
         fclose(sim_head_file);
         fclose(sim_tail_file);
+#else
+        close(fd_spi);
 #endif
         return 0;
 }
@@ -143,33 +146,42 @@ void spinfs_read_ht_slot()
          */
         int sim_head_file_offset = 0;
         int sim_tail_file_offset = 0;
+        unsigned char buf;
         for (sim_head_file_offset = SEC_REG_SIZE - sizeof(uint32_t);
                         sim_head_file_offset >= 0;
                         sim_head_file_offset -= sizeof(uint32_t)) {
 #ifdef SIMULATED_FLASH
                 fseek(sim_head_file, sim_head_file_offset, SEEK_SET);
-                if (fgetc(sim_head_file) != 0xFF) {
+                buf = fgetc(sim_head_file);
+#else
+                spi_read_sec_reg(SEC_REG_1_START_ADDR + sim_head_file_offset,
+                                &buf, 1);
+#endif
+                if (buf != 0xFF) {
                         break;
                 }
                 if (sim_head_file_offset == 0) {
                         sim_head_file_offset = -1;
                         break;
                 }
-#endif
         }
         for (sim_tail_file_offset = SEC_REG_SIZE - sizeof(uint32_t);
                         sim_tail_file_offset >= 0;
                         sim_tail_file_offset -= sizeof(uint32_t)) {
 #ifdef SIMULATED_FLASH
                 fseek(sim_tail_file, sim_tail_file_offset, SEEK_SET);
-                if (fgetc(sim_tail_file) != 0xFF) {
+                buf = fgetc(sim_tail_file);
+#else
+                spi_read_sec_reg(SEC_REG_2_START_ADDR + sim_tail_file_offset,
+                                &buf, 1);
+#endif
+                if (buf != 0xFF) {
                         break;
                 }
                 if (sim_tail_file_offset == 0) {
                         sim_tail_file_offset = -1;
                         break;
                 }
-#endif
         }
 
         /* Check to head and tail are written in pair and aligned to the same pair */
@@ -179,10 +191,10 @@ void spinfs_read_ht_slot()
                 else
                         ht_slot = sim_head_file_offset / sizeof(uint32_t) + 1;
         } else {
-                printf("Head and tail have different slot!\n");
+                printf("WARNING: Head and tail have different slot!\n");
                 printf("Security Register 1 offset 0x%x.\n", sim_head_file_offset);
                 printf("Security Register 2 offset 0x%x.\n", sim_tail_file_offset);
-                exit(EXIT_FAILURE);
+                ht_slot = 0;
         }
 }
 
@@ -197,6 +209,13 @@ void spinfs_read_head_tail()
                 fread(&head, sizeof(uint32_t), 1, sim_head_file);
                 fseek(sim_tail_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
                 fread(&tail, sizeof(uint32_t), 1, sim_tail_file);
+#else
+                spi_read_sec_reg(SEC_REG_1_START_ADDR
+                                + (ht_slot - 1) * sizeof(uint32_t),
+                                (unsigned char *)&head, sizeof(uint32_t));
+                spi_read_sec_reg(SEC_REG_2_START_ADDR
+                                + (ht_slot - 1) * sizeof(uint32_t),
+                                (unsigned char *)&tail, sizeof(uint32_t));
 #endif
         } else {
                 head = 0;
@@ -222,6 +241,13 @@ void spinfs_write_head_tail()
         fwrite(&head, sizeof(uint32_t), 1, sim_head_file);
         fseek(sim_tail_file, (ht_slot - 1) * sizeof(uint32_t), SEEK_SET);
         fwrite(&tail, sizeof(uint32_t), 1, sim_tail_file);
+#else
+        spi_write_sec_reg(SEC_REG_1_START_ADDR
+                        + (ht_slot - 1) * sizeof(uint32_t),
+                        (unsigned char *)&head, sizeof(uint32_t));
+        spi_write_sec_reg(SEC_REG_2_START_ADDR
+                        + (ht_slot - 1) * sizeof(uint32_t),
+                        (unsigned char *)&tail, sizeof(uint32_t));
 #endif
 }
 
@@ -319,11 +345,18 @@ struct spinfs_raw_inode *spinfs_read_inode(struct spinfs_raw_inode *i,
 #ifdef SIMULATED_FLASH
         fseek(sim_main_file, addr, SEEK_SET);
         fread(i, 1, sizeof(*i), sim_main_file);
+#else
+        spi_read_data(addr, (unsigned char*)i, sizeof(*i));
 #endif
         if (i->data_size > 0) {
-                i = realloc(i, sizeof(*i) + i->data_size);     // allocate extra memory for data[]
+                /* allocate extra memory for data[] */
+                i = realloc(i, sizeof(*i) + i->data_size);
+                /* copy extra data to the allocated struct */
 #ifdef SIMULATED_FLASH
-                fread(i->data, 1, i->data_size, sim_main_file);         // copy extra data to the allocated struct
+                fread(i->data, 1, i->data_size, sim_main_file);
+#else
+                spi_read_data(addr + sizeof(*i), (unsigned char*)i->data,
+                                i->data_size);
 #endif
         }
 
@@ -357,8 +390,11 @@ void spinfs_write_inode(struct spinfs_raw_inode *i)
 {
         print_inode_info(i, __func__);
 #ifdef SIMULATED_FLASH
+        //TODO handle case when write over size of flash
         fseek(sim_main_file, tail, SEEK_SET);
         fwrite(i, 1, sizeof(*i) + i->data_size, sim_main_file);
+#else
+        spi_write_data(tail, (unsigned char *)i, sizeof(*i) + i->data_size);
 #endif
         spinfs_update_itable(i, tail);
         //TODO if tail > MAIN_FLASH_SIZE
@@ -371,6 +407,10 @@ void spinfs_erase_fs()
 {
 #ifdef SIMULATED_FLASH
         spinfs_create_sim_flash(SIMULATED_MAIN_FILE_PATH);
+#else
+        /* FIXME Testing purpose: only erase the first block to save time */
+        //spi_erase_chip();
+        spi_erase_block(0);
 #endif
 }
 
@@ -382,6 +422,9 @@ void spinfs_erase_sec_reg_1_2()
 #ifdef SIMULATED_FLASH
         spinfs_create_sim_flash(SIMULATED_HEAD_FILE_PATH);
         spinfs_create_sim_flash(SIMULATED_TAIL_FILE_PATH);
+#else
+        spi_erase_sec_reg(SEC_REG_1_START_ADDR);
+        spi_erase_sec_reg(SEC_REG_2_START_ADDR);
 #endif
         ht_slot = 0;
 }
@@ -474,9 +517,10 @@ int spinfs_get_dirent_index(struct dir_entry *t, int size, uint32_t inum)
 
 void print_head_tail_info(const char *caller)
 {
+        int addr = (ht_slot - 1) * sizeof(uint32_t);
         printf("\nDebugging head, tail --------------------\n");
         printf("Caller: %s\n", caller);
-        printf("Head and tail is at slot: %d\n", ht_slot);
+        printf("Head and tail is at slot: %d, addr: 0x%x\n", ht_slot, addr);
         printf("Value of head: 0x%x, %d.\n", head, head);
         printf("Value of tail: 0x%x, %d.\n", tail, tail);
 }
