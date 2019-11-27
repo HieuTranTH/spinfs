@@ -123,7 +123,7 @@ int spinfs_init(int mkfs)
                 if (ht_slot == 0)
                         return -1;
                 spinfs_read_head_tail();
-                print_head_tail_info(__func__);
+                //print_head_tail_info(__func__);
 
                 spinfs_scan_fs();
         }
@@ -132,7 +132,7 @@ int spinfs_init(int mkfs)
 
 int spinfs_deinit()
 {
-        print_itable_info(__func__);
+        //print_itable_info(__func__);
         free(itable);
 #ifdef SIMULATED_FLASH
         fclose(sim_main_file);
@@ -281,7 +281,7 @@ void spinfs_scan_fs()
                 inode_count++;
         }
         printf("\nTotal i-node count after scanning: %d\n", inode_count);
-        print_itable_info(__func__);
+        //print_itable_info(__func__);
         free(s);
 }
 
@@ -398,7 +398,7 @@ struct spinfs_raw_inode *spinfs_get_inode_from_inum(struct spinfs_raw_inode *i,
  */
 void spinfs_write_inode(struct spinfs_raw_inode *i)
 {
-        print_inode_info(i, __func__);
+        //print_inode_info(i, __func__);
         if (tail + sizeof(*i) + i->data_size > MAIN_FLASH_SIZE) {
                 printf("Fatal: Size to write too large!\n");
                 exit(EXIT_FAILURE);
@@ -416,7 +416,7 @@ void spinfs_write_inode(struct spinfs_raw_inode *i)
         //TODO if tail > MAIN_FLASH_SIZE
         tail += sizeof(*i) + i->data_size;
         spinfs_write_head_tail();
-        print_head_tail_info(__func__);
+        //print_head_tail_info(__func__);
 }
 
 void spinfs_erase_fs()
@@ -457,7 +457,7 @@ void spinfs_format()
         spinfs_erase_sec_reg_1_2();
         head = 0;
         tail = 0;
-        print_head_tail_info(__func__);         // print info after erasing
+        //print_head_tail_info(__func__);         // print info after erasing
         spinfs_erase_itable();
 }
 
