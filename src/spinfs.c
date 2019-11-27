@@ -560,13 +560,48 @@ uint32_t spinfs_scan_dirty()
                 //printf("Address: 0x%06x\n", addr);
                 s = spinfs_read_inode(s, addr);
                 //print_inode_info(s, __func__);
-                if ((F_ISDEL(s->flags))
-                                || (s->version < itable[s->inode_num].version))
+                if ((s->version < itable[s->inode_num].version)
+                                || (F_ISDEL(s->flags)))
                         dirty += sizeof(*s) + s->data_size;
                 addr += sizeof(*s) + s->data_size;
         }
         free(s);
         return dirty;
+}
+
+/*
+ * Trying to free the first sector at head
+ * Skip obsolete and deleted i-node
+ * Copy valid i-node to a new place at tail
+ */
+int spinfs_free_first_sector()
+{
+        int count = 0;
+        uint32_t old_head = head;
+        struct spinfs_raw_inode *s = malloc(sizeof(*s));
+        // TODO handle head wrap around at flash bound
+        while ((head - old_head) / SECTOR_SIZE < 1) {
+                //printf("Address: 0x%06x\n", head);
+                s = spinfs_read_inode(s, head);
+                if (!(s->version < itable[s->inode_num].version)
+                                && (!F_ISDEL(s->flags))) {
+                        //print_inode_info(s, __func__);
+                        spinfs_write_inode(s);
+                        count++;
+                }
+                head += sizeof(*s) + s->data_size;
+                //print_head_tail_info(__func__);
+        }
+        printf("\nThere were %d moving of valid i-node\n", count);
+#ifdef SIMULATED_FLASH
+#else
+        //dump_flash("before_free.bin");
+        spi_erase_sector(old_head);
+#endif
+        spinfs_write_head_tail();
+        //print_head_tail_info(__func__);
+        free(s);
+        return 0;
 }
 
 void print_head_tail_info(const char *caller)

@@ -109,6 +109,7 @@ void spinfs_format();
 uint32_t spinfs_check_valid_path(char *path);
 void spinfs_report_space();
 uint32_t spinfs_scan_dirty();
+int spinfs_free_first_sector();
 
 /*
  * ******************************************************
