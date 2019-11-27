@@ -1,18 +1,115 @@
 #include "spinfs.h"
-#include "spi_flash.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>           // stat
 
 void print_usage()
 {
-        fprintf(stderr, "####### Copy files to and from flash, /spinfs/ #######\n");
-        fprintf(stderr, "Format: spinfs_cp src dest\n");
-        fprintf(stderr, "Append /spinfs/ to tell the file is from flash\n");
+        fprintf(stderr, "####### List file or directory #######\n");
+        fprintf(stderr, "Format: spinfs_ls path\n");
         fprintf(stderr, "\n");
 }
 
+#define TITLE_TEXT_WIDTH        32
+
+/* TODO layout is not consistent if fieldWidth is odd */
+void centerText(char *text, int fieldWidth) {
+        int padlen = (fieldWidth - strlen(text)) / 2;
+        printf("%*s%s%*s", padlen, "", text, padlen, "");
+}
+
+void centerTitleText(char *text, int fieldWidth) {
+        printf("\n#####################");
+        centerText(text, fieldWidth);
+        printf("#####################\n\n");
+}
+
+void print_format_dirent(int idx, char *name, uint32_t inum)
+{
+        char idx_buf[16], name_buf[32], inum_buf[16];
+        sprintf(idx_buf, "%d", idx);
+        sprintf(name_buf, "%.*s", MAX_NAME_LEN, name);
+        sprintf(inum_buf, "%d", inum);
+        centerText(idx_buf, 16);
+        printf("|");
+        centerText(name_buf, MAX_NAME_LEN + 2);
+        printf("|");
+        centerText(inum_buf, 16);
+        printf("\n");
+}
+
+void list_dir(struct spinfs_raw_inode *s)
+{
+        int dirent_count = s->data_size / sizeof(struct dir_entry);
+        printf("Listing directory %.*s, i-node number %d:\n", MAX_NAME_LEN,
+                        s->name, s->inode_num);
+        printf("Directory entry count: %d\n", dirent_count);
+        if (dirent_count > 0) {
+                printf("-----------------------------------------------------------------\n");
+                centerText("Entry index", 16);
+                printf("|");
+                centerText("Name", MAX_NAME_LEN + 2);
+                printf("|");
+                centerText("I-node number", 16);
+                printf("\n");
+                printf("-----------------------------------------------------------------\n");
+
+                /* loop through directory entry table and print out entries */
+                for (int i = 0; i < dirent_count; i++) {
+                        print_format_dirent(i,
+                                ((struct dir_entry *)s->data)[i].name,
+                                ((struct dir_entry *)s->data)[i].inode_num);
+                }
+        }
+}
+
+void list_file(struct spinfs_raw_inode *s)
+{
+        printf("Listing file %.*s, i-node number %d:\n", MAX_NAME_LEN,
+                        s->name, s->inode_num);
+        printf("Metadata:\n");
+        /* Print details */
+        printf("Magic 1             : %*.*s\n", MAX_NAME_LEN, 4, (char *)&s->magic1);
+        printf("Name                : %*.*s\n", MAX_NAME_LEN, MAX_NAME_LEN, s->name);
+        printf("s-node number       : %*d\n", MAX_NAME_LEN, s->inode_num);
+        printf("Mode                : %*s\n", MAX_NAME_LEN,S_ISDIR(s->mode) ? "Directory" : "Regular File");
+        printf("UID                 : %*d\n", MAX_NAME_LEN, s->uid);
+        printf("GID                 : %*d\n", MAX_NAME_LEN, s->gid);
+        printf("Creation time       : %*s", MAX_NAME_LEN, ctime(&(s->ctime)));
+        printf("Modification time   : %*s", MAX_NAME_LEN, ctime(&(s->mtime)));
+        printf("Flags               : %*s\n", MAX_NAME_LEN, F_ISDEL(s->flags) ? "DELETED" : "0");
+        printf("Parent s-node number: %*d\n", MAX_NAME_LEN, s->parent_inode);
+        printf("Version             : %*d\n", MAX_NAME_LEN, s->version);
+        printf("Data size           : %*d\n", MAX_NAME_LEN, s->data_size);
+        printf("Magic 2             : %*.*s\n", MAX_NAME_LEN, 4, (char *)&s->magic2);
+}
+
+int list_path(char *path)
+{
+        centerTitleText("LISTING CONTENT", TITLE_TEXT_WIDTH);
+
+        uint32_t inum = spinfs_check_valid_path(path);
+        if (inum == 0) {
+                return -1;
+        }
+        printf("Path is %s\n", path);
+        struct spinfs_raw_inode *inode = spinfs_get_inode_from_inum(NULL,
+                        inum);
+        if (inode == NULL) {
+                return -1;
+        }
+        //print_inode_info(inode, __func__);
+
+        /* Decide if i-node is directory or regular file */
+        if (S_ISDIR(inode->mode))
+                list_dir(inode);
+        else if (S_ISREG(inode->mode))
+                list_file(inode);
+
+        free(inode);
+        centerTitleText("DONE LISTING CONTENT", TITLE_TEXT_WIDTH);
+        return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -23,63 +120,14 @@ int main(int argc, char *argv[])
         }
         print_usage();
 
-        spinfs_init();
-
         char *path = argv[1];
-        int pathlen = strlen(path);
 
-        uint32_t target_inode_num = 1;  //start traversing from root directory
-        if (path[0] != '/') {
-                printf("Path needs to be absolute!\n");
+        spinfs_init();
+        if (list_path(path) == -1) {
+                perror("LS error");
                 exit(EXIT_FAILURE);
         }
-        printf("\npath: %s\n", path);
-        printf("pathlen: %d\n\n", pathlen);
-
-        printf("Inode %d, addr 0x%06x, ver %d.\n", target_inode_num, spinfs_get_inode_table_entry(target_inode_num).physical_addr, spinfs_get_inode_table_entry(target_inode_num).version);
-        /*
-         * Parse the path to get the target i-node
-         */
-        struct spinfs_raw_inode *s = malloc(sizeof(*s));
-        char *token;
-        token = strtok(path, "/");      //TODO will modify argv[1]
-        if (token == NULL) {
-                // target i-node is root directory
-                target_inode_num = 1;
-        } else {
-                // TODO get current directory name from path
-                while (token != NULL) {
-                        s = spinfs_read_inode(s,
-                                spinfs_get_inode_table_entry(target_inode_num).physical_addr);
-                        target_inode_num = find_file_in_dir(s, token);
-                        if (target_inode_num == 0) break;
-
-                        token = strtok(NULL, "/");
-                }
-        }
-#if 0
-
-
-        /*
-         * List content of the i-node afer path processing
-         * TODO if i-node is a directory, list content; otherwise repeat its name
-         */
-        if (target_inode_num == 0) {
-                printf("File/Directory not found.\n");
-        } else {
-                get_inode_at_addr(&s, fp, itable[target_inode_num].physical_addr);
-                if (S_ISREG(s->mode)) {        // target is a regular file
-                        ls_file(s);
-                } else if (S_ISDIR(s->mode)) {
-                        print_directory(s);
-                }
-        }
-
-#endif
-
-
-
-        free(s);
         spinfs_deinit();
+
         return 0;
 }
