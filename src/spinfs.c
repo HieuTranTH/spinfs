@@ -10,6 +10,9 @@ uint32_t head, tail;
 uint32_t ht_slot;       /* determine position of newest head and tail in Sec Regs*/
 struct inode_table_entry *itable; /* pointer to dynamic i-node table */
 uint32_t itable_size;  /* does not count index 0, = array size - 1*/
+uint32_t inode_count;
+uint32_t obsolete_count;
+uint32_t deleted_count;
 
 #ifdef SIMULATED_FLASH
 FILE* sim_main_file;
@@ -263,18 +266,21 @@ void spinfs_scan_fs()
 {
         //printf("Scanning filesystem for inode_table\n\n");
         int addr = head;
-        int count = 0;
+        inode_count = 0;
+        obsolete_count = 0;
+        deleted_count = 0;
         struct spinfs_raw_inode *s = malloc(sizeof(*s));
         /* TODO check head and tail wrap around */
         while (addr < tail) {
                 //printf("Address: 0x%06x\n", addr);
                 s = spinfs_read_inode(s, addr);
                 //print_inode_info(s, __func__);
+                if (F_ISDEL(s->flags)) deleted_count++;
                 spinfs_update_itable(s, addr);
                 addr += sizeof(*s) + s->data_size;
-                count++;
+                inode_count++;
         }
-        printf("\nTotal i-node count after scanning: %d\n", count);
+        printf("\nTotal i-node count after scanning: %d\n", inode_count);
         print_itable_info(__func__);
         free(s);
 }
@@ -285,11 +291,8 @@ void spinfs_scan_fs()
  */
 void spinfs_update_itable(struct spinfs_raw_inode *i, uint32_t addr)
 {
-        //printf("\nUpdate i-node table -----------------------\n");
-        //printf("        Current biggest i in i table: %d\n", itable_size);
 
         if (i->inode_num > itable_size) {
-                //printf("        New entry: %d, 0x%06x, %d\n", i->inode_num, addr, i->version);
                 itable_size = i->inode_num;     /* itable size is the current biggest inode */
                 // allocate extra memories for higher inodes
                 itable = realloc(itable, (itable_size + 1) * sizeof(*itable));
@@ -297,16 +300,14 @@ void spinfs_update_itable(struct spinfs_raw_inode *i, uint32_t addr)
                 itable[i->inode_num].physical_addr = addr;
                 itable[i->inode_num].version = i->version;
         } else if (itable[i->inode_num].version < i->version) {
-                //printf("        Update old entry: %d, 0x%06x, %d\n", i->inode_num, addr, i->version);
+                obsolete_count++;
                 //populate or update entry with current i metadata
                 itable[i->inode_num].physical_addr = addr;
                 itable[i->inode_num].version = i->version;
         } else {
-                //printf("        Current i %d entry in i table is more recent.\n", i->inode_num);
+                obsolete_count++;
         }
 
-        //printf("        New biggest i in i table: %d\n", itable_size);
-        //printf("End of Update i table------------------------------------------\n\n");
 }
 
 void spinfs_erase_itable()
@@ -403,6 +404,8 @@ void spinfs_write_inode(struct spinfs_raw_inode *i)
 #else
         spi_write_data(tail, (unsigned char *)i, sizeof(*i) + i->data_size);
 #endif
+        if (F_ISDEL(i->flags)) deleted_count++;
+        inode_count++;
         spinfs_update_itable(i, tail);
         //TODO if tail > MAIN_FLASH_SIZE
         tail += sizeof(*i) + i->data_size;
@@ -439,6 +442,9 @@ void spinfs_erase_sec_reg_1_2()
 void spinfs_format()
 {
         spinfs_erase_fs();
+        inode_count = 0;
+        obsolete_count = 0;
+        deleted_count = 0;
         /*
          * Erase Security Registers 1 and 2, then reset head and tail in RAM
          */
@@ -520,6 +526,47 @@ int spinfs_get_dirent_index(struct dir_entry *t, int size, uint32_t inum)
                 if (t[i].inode_num == inum) return i;
         }
         return -1;
+}
+
+void spinfs_report_space()
+{
+        uint32_t free = 0;
+        if (tail > head)
+                free = MAIN_FLASH_SIZE - tail + head;
+        else
+                free = tail - head;
+        uint32_t dirty = spinfs_scan_dirty();
+        printf("\nReporting free space information\n");
+        printf("Total i-node count         : %d\n", inode_count);
+        printf("Total obsolete i-node count: %d\n", obsolete_count);
+        printf("Total deleted i-node count : %d\n", deleted_count);
+        printf("Used space                 : %d Byte(s)\n", MAIN_FLASH_SIZE - free);
+        printf("Available space            : %d Byte(s)\n", free);
+        printf("Dirty space                : %d Byte(s)\n", dirty);
+}
+
+/*
+ * Scan the whole filesystem to calculate dirty space
+ * Start from head, end at tail
+ * TODO handle case when head and tail wrap around
+ */
+uint32_t spinfs_scan_dirty()
+{
+        uint32_t dirty = 0;
+        int addr = head;
+        struct spinfs_raw_inode *s = malloc(sizeof(*s));
+        /* TODO check head and tail wrap around */
+        while (addr < tail) {
+                //printf("Address: 0x%06x\n", addr);
+                s = spinfs_read_inode(s, addr);
+                //print_inode_info(s, __func__);
+                if ((F_ISDEL(s->flags))
+                                || (s->version < itable[s->inode_num].version))
+                        dirty += sizeof(*s) + s->data_size;
+                addr += sizeof(*s) + s->data_size;
+        }
+        free(s);
+        return dirty;
 }
 
 void print_head_tail_info(const char *caller)

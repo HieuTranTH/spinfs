@@ -107,6 +107,8 @@ void spinfs_erase_fs();
 void spinfs_erase_sec_reg_1_2();
 void spinfs_format();
 uint32_t spinfs_check_valid_path(char *path);
+void spinfs_report_space();
+uint32_t spinfs_scan_dirty();
 
 /*
  * ******************************************************

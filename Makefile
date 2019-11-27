@@ -17,7 +17,8 @@ ALL_UTILS = dump_flash erase_block erase_chip erase_sector readID read write \
 			readcat \
 			file_ops_example \
 			spinfs_mkfs spinfs_mkdir spinfs_ls spinfs_touch \
-			spinfs_rm spinfs_rmdir spinfs_cp
+			spinfs_rm spinfs_rmdir spinfs_cp \
+			spinfs_report_space
 
 
 all: $(addprefix output/, $(ALL_UTILS)) \
