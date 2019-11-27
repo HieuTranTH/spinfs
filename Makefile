@@ -14,11 +14,13 @@ endif
 
 ALL_UTILS = dump_flash erase_block erase_chip erase_sector readID read write \
 			read_security write_security erase_security \
+			readcat \
 			file_ops_example \
-			spinfs_mkfs spinfs_cp spinfs_ls spinfs_mkdir
+			spinfs_mkfs spinfs_mkdir spinfs_ls spinfs_touch \
+			spinfs_rm spinfs_rmdir
 
 all: $(addprefix output/, $(ALL_UTILS)) \
-	src/create_sim_flash src/scan_sim_flash src/test_spinfs
+	#src/create_sim_flash src/scan_sim_flash src/test_spinfs
 
 clean:
 	rm -rf output
