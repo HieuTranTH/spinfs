@@ -83,7 +83,7 @@ void spinfs_create_sim_flash(char *file)
 }
 #endif
 
-void spinfs_init()
+int spinfs_init()
 {
         itable = calloc(1, sizeof(*itable)); /* initialize index 0 to 0 */
 #ifdef SIMULATED_FLASH
@@ -109,16 +109,21 @@ void spinfs_init()
                 sim_tail_file = fopen(SIMULATED_TAIL_FILE_PATH, "w");
                 spinfs_create_sim_flash(SIMULATED_TAIL_FILE_PATH);
         }
+#else
+        fd_spi = spi_init();
 #endif
 
         spinfs_read_ht_slot();
+        if (ht_slot == 0)
+                return -1;
         spinfs_read_head_tail();
         print_head_tail_info(__func__);
 
         spinfs_scan_fs();
+        return 0;
 }
 
-void spinfs_deinit()
+int spinfs_deinit()
 {
         print_itable_info(__func__);
         free(itable);
@@ -127,6 +132,7 @@ void spinfs_deinit()
         fclose(sim_head_file);
         fclose(sim_tail_file);
 #endif
+        return 0;
 }
 
 void spinfs_read_ht_slot()

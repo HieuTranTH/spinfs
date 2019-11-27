@@ -56,8 +56,8 @@ void spinfs_create_sim_flash(char *file);
  * to allocate inode_table dynamically
  * to open simulated flash files
  */
-void spinfs_init();
-void spinfs_deinit();
+int spinfs_init();
+int spinfs_deinit();
 
 /*
  * ******************************************************
