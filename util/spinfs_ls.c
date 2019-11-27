@@ -67,16 +67,16 @@ void list_dir(struct spinfs_raw_inode *s)
 {
         list_metadata(s);
         int dirent_count = s->data_size / sizeof(struct dir_entry);
-        printf("Directory entry count: %d\n", dirent_count);
+        printf("\nDirectory entry count: %d\n", dirent_count);
         if (dirent_count > 0) {
-                printf("-----------------------------------------------------------------\n");
+                printf("------------------------------------------------------------------\n");
                 centerText("Entry index", 16);
                 printf("|");
                 centerText("Name", MAX_NAME_LEN + 2);
                 printf("|");
                 centerText("I-node number", 16);
                 printf("\n");
-                printf("-----------------------------------------------------------------\n");
+                printf("------------------------------------------------------------------\n");
 
                 /* loop through directory entry table and print out entries */
                 for (int i = 0; i < dirent_count; i++) {
