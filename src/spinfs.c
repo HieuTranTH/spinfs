@@ -305,7 +305,8 @@ void spinfs_update_itable(struct spinfs_raw_inode *i, uint32_t addr)
                                 old_itable_size++)
                         itable[old_itable_size].version = 0;
         } else if (itable[i->inode_num].version < i->version) {
-                obsolete_count++;
+                if (itable[i->inode_num].version != 0)
+                        obsolete_count++;
                 //populate or update entry with current i metadata
                 itable[i->inode_num].physical_addr = addr;
                 itable[i->inode_num].version = i->version;
