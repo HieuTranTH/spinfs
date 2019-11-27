@@ -201,6 +201,7 @@ int upload_to_flash(char *src, char *dest)
 
         free(base_inode);
         free(dir_inode);
+        fclose(src_fp);
         centerTitleText("DONE COPYING FILE to FLASH", TITLE_TEXT_WIDTH);
         return 0;
 }
