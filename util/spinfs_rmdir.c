@@ -30,7 +30,7 @@ void centerTitleText(char *text, int fieldWidth) {
  */
 struct spinfs_raw_inode *update_parent_dir(struct spinfs_raw_inode *parent, uint32_t deleted_inum)
 {
-        print_inode_info(parent, __func__);
+        //print_inode_info(parent, __func__);
 
         /* Save old dirent table to buffer */
         struct dir_entry *old_table = malloc(parent->data_size);
