@@ -392,6 +392,10 @@ struct spinfs_raw_inode *spinfs_get_inode_from_inum(struct spinfs_raw_inode *i,
 void spinfs_write_inode(struct spinfs_raw_inode *i)
 {
         print_inode_info(i, __func__);
+        if (tail + sizeof(*i) + i->data_size > MAIN_FLASH_SIZE) {
+                printf("Fatal: Size to write too large!\n");
+                exit(EXIT_FAILURE);
+        }
 #ifdef SIMULATED_FLASH
         //TODO handle case when write over size of flash
         fseek(sim_main_file, tail, SEEK_SET);
