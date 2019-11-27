@@ -1,4 +1,5 @@
 #include "spinfs.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -66,25 +67,25 @@ struct spinfs_raw_inode *create_new_empty_dir(struct spinfs_raw_inode *new_dir, 
         return new_dir;
 }
 
-int make_directory(char *bname, char* dname)
+int make_directory(char *bname, char *dname)
 {
         centerTitleText("MAKING a NEW DIRECTORY", TITLE_TEXT_WIDTH);
 
-        uint32_t dir_inum = spinfs_check_valid_path(dname);
-        if (dir_inum == 0) {
+        if (strcmp(bname, "/") == 0) {
+                printf("Cannot make root directory!\n");
+                errno = EINVAL;
                 return -1;
         }
+
+        uint32_t dir_inum = spinfs_check_valid_path(dname);
+        if (dir_inum == 0) return -1;
         struct spinfs_raw_inode *dir_inode = spinfs_get_inode_from_inum(NULL,
                         dir_inum);
-        if (dir_inode == NULL) {
-                return -1;
-        }
+        if (dir_inode == NULL) return -1;
         //print_inode_info(dir_inode, __func__);
-        if (spinfs_is_name_in_dir(dir_inode, bname)) {
-                return -1;
-        }
+        if (spinfs_is_name_in_dir(dir_inode, bname)) return -1;
         struct spinfs_raw_inode *base_inode = create_new_empty_dir(NULL,
-                        bname, dir_inode->parent_inode);
+                        bname, dir_inode->inode_num);
         dir_inode = update_parent_dir(dir_inode, base_inode->name, base_inode->inode_num);
 
         free(base_inode);
@@ -101,6 +102,7 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
         }
         print_usage();
+        printf("Path is \"%s\"\n", argv[1]);
 
         /* Parse dirname and basename from command line argument */
         char *target_basename, *bnamec, *target_dirname, *dnamec;
