@@ -1,7 +1,6 @@
 #include "spinfs.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <unistd.h>
 #include <string.h>
 #include <libgen.h>             // basename, dirname
@@ -13,13 +12,18 @@ void print_usage()
         fprintf(stderr, "\n");
 }
 
-int check_abs_path(char *path)
-{
-        if ((strlen(path) <= 0) || (path[0] != '/')) {
-                errno = EINVAL;
-                return -1;
-        }
-        return 0;
+#define TITLE_TEXT_WIDTH        32
+
+/* TODO layout is not consistent if fieldWidth is odd */
+void centerText(char *text, int fieldWidth) {
+        int padlen = (fieldWidth - strlen(text)) / 2;
+        printf("%*s%s%*s", padlen, "", text, padlen, "");
+}
+
+void centerTitleText(char *text, int fieldWidth) {
+        printf("\n#####################");
+        centerText(text, fieldWidth);
+        printf("#####################\n\n");
 }
 
 struct spinfs_raw_inode *update_parent_dir(struct spinfs_raw_inode *parent, char *new_name, uint32_t new_inum)
@@ -64,17 +68,19 @@ struct spinfs_raw_inode *create_new_empty_dir(struct spinfs_raw_inode *new_dir, 
 
 int make_directory(char *bname, char* dname)
 {
-        printf("\n##################### %30s #####################\n\n", "MAKING a NEW DIRECTORY");
+        centerTitleText("MAKING a NEW DIRECTORY", TITLE_TEXT_WIDTH);
+
         uint32_t dir_inum = spinfs_check_valid_path(dname);
         if (dir_inum == 0) {
-                errno = ENOENT;
                 return -1;
         }
         struct spinfs_raw_inode *dir_inode = spinfs_get_inode_from_inum(NULL,
                         dir_inum);
+        if (dir_inode == NULL) {
+                return -1;
+        }
         //print_inode_info(dir_inode, __func__);
         if (spinfs_is_name_in_dir(dir_inode, bname)) {
-                errno = EEXIST;
                 return -1;
         }
         struct spinfs_raw_inode *base_inode = create_new_empty_dir(NULL,
@@ -83,7 +89,7 @@ int make_directory(char *bname, char* dname)
 
         free(base_inode);
         free(dir_inode);
-        printf("\n##################### %30s #####################\n\n", "DONE MAKING a NEW DIRECTORY");
+        centerTitleText("DONE MAKING a NEW DIRECTORY", TITLE_TEXT_WIDTH);
         return 0;
 }
 
@@ -95,11 +101,6 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
         }
         print_usage();
-
-        if (check_abs_path(argv[1]) == -1) {
-                perror("Path error");
-                exit(EXIT_FAILURE);
-        }
 
         /* Parse dirname and basename from command line argument */
         char *target_basename, *bnamec, *target_dirname, *dnamec;
