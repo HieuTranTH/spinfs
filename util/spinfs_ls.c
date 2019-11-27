@@ -12,10 +12,14 @@ void print_usage()
 
 #define TITLE_TEXT_WIDTH        32
 
-/* TODO layout is not consistent if fieldWidth is odd */
+/* TODO check logic in passing name to prevent overflow bug with non
+ * null-terminated string */
 void centerText(char *text, int fieldWidth) {
+        int extra = 0;          /* extra pad when fieldWidth is odd */
+        if ((strlen(text) % 2) == 1)
+                extra = 1;
         int padlen = (fieldWidth - strlen(text)) / 2;
-        printf("%*s%s%*s", padlen, "", text, padlen, "");
+        printf("%*s%s%*s", padlen, "", text, padlen + extra, "");
 }
 
 void centerTitleText(char *text, int fieldWidth) {
@@ -26,7 +30,7 @@ void centerTitleText(char *text, int fieldWidth) {
 
 void print_format_dirent(int idx, char *name, uint32_t inum)
 {
-        char idx_buf[16], name_buf[32], inum_buf[16];
+        char idx_buf[16], name_buf[MAX_NAME_LEN + 1], inum_buf[16];
         sprintf(idx_buf, "%d", idx);
         sprintf(name_buf, "%.*s", MAX_NAME_LEN + 2, name);
         sprintf(inum_buf, "%d", inum);
