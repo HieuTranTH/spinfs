@@ -45,7 +45,7 @@ int download_from_flash(char *src, char *dest)
                 errno = EISDIR;
                 return -1;
         }
-        print_inode_info(src_inode, __func__);
+        //print_inode_info(src_inode, __func__);
 
         /* Validate dest path and open dest file to write */
         struct stat dest_st;
@@ -94,7 +94,7 @@ struct spinfs_raw_inode *update_old_file(struct spinfs_raw_inode *s, off_t size,
 
 void update_inode_mtime(struct spinfs_raw_inode *s)
 {
-        print_inode_info(s, __func__);
+        //print_inode_info(s, __func__);
 
         s->mtime = time(NULL);
         ++s->version;
@@ -129,7 +129,7 @@ struct spinfs_raw_inode *create_new_file(struct spinfs_raw_inode *new_file, char
 
 struct spinfs_raw_inode *update_parent_dir(struct spinfs_raw_inode *parent, char *new_name, uint32_t new_inum)
 {
-        print_inode_info(parent, __func__);
+        //print_inode_info(parent, __func__);
 
         /* Add new dirent to parent directory */
         parent->data_size += sizeof(struct dir_entry);
