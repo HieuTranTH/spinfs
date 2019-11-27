@@ -1,10 +1,10 @@
 #include "spinfs.h"
-#include "spi_flash.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
 #include <string.h>
-#include <sys/stat.h>           // stat
-#include <libgen.h>             // basename
+#include <libgen.h>             // basename, dirname
 
 void print_usage()
 {
@@ -13,6 +13,79 @@ void print_usage()
         fprintf(stderr, "\n");
 }
 
+int check_abs_path(char *path)
+{
+        if ((strlen(path) <= 0) || (path[0] != '/')) {
+                errno = EINVAL;
+                return -1;
+        }
+        return 0;
+}
+
+struct spinfs_raw_inode *update_parent_dir(struct spinfs_raw_inode *parent, char *new_name, uint32_t new_inum)
+{
+        /* Add new dirent to parent directory */
+        parent->data_size += sizeof(struct dir_entry);
+        parent = realloc(parent, sizeof(*parent) + parent->data_size);
+        int dirent_count = parent->data_size / sizeof(struct dir_entry);
+        /* Assign new value for the new entry */
+        struct dir_entry *dir_table = (struct dir_entry *)parent->data;
+        strncpy(dir_table[dirent_count - 1].name, new_name, MAX_NAME_LEN);
+        dir_table[dirent_count - 1].inode_num = new_inum;
+
+        /* Update parent i-node metadata */
+        parent->mtime = time(NULL);
+        ++parent->version;
+
+        spinfs_write_inode(parent);
+        return parent;
+}
+
+struct spinfs_raw_inode *create_new_empty_dir(struct spinfs_raw_inode *new_dir, char *name, uint32_t parent_inum)
+{
+        new_dir = realloc(new_dir, sizeof(*new_dir));
+        new_dir->magic1 = SPINFS_MAGIC1;
+        strncpy(new_dir->name, name, MAX_NAME_LEN);
+        new_dir->inode_num = spinfs_get_next_avail_inum();
+        new_dir->uid = getuid();
+        new_dir->gid = getgid();
+        new_dir->mode = S_IFDIR;
+        new_dir->flags = 0;
+        new_dir->ctime = time(NULL);
+        new_dir->mtime = time(NULL);
+        new_dir->parent_inode = parent_inum;
+        new_dir->version = 1;
+        new_dir->data_size = 0;
+        new_dir->magic2 = SPINFS_MAGIC2;
+
+        spinfs_write_inode(new_dir);
+        return new_dir;
+}
+
+int make_directory(char *bname, char* dname)
+{
+        printf("\n##################### %30s #####################\n\n", "MAKING a NEW DIRECTORY");
+        uint32_t dir_inum = spinfs_check_valid_path(dname);
+        if (dir_inum == 0) {
+                errno = ENOENT;
+                return -1;
+        }
+        struct spinfs_raw_inode *dir_inode = spinfs_get_inode_from_inum(NULL,
+                        dir_inum);
+        //print_inode_info(dir_inode, __func__);
+        if (spinfs_is_name_in_dir(dir_inode, bname)) {
+                errno = EEXIST;
+                return -1;
+        }
+        struct spinfs_raw_inode *base_inode = create_new_empty_dir(NULL,
+                        bname, dir_inode->parent_inode);
+        dir_inode = update_parent_dir(dir_inode, base_inode->name, base_inode->inode_num);
+
+        free(base_inode);
+        free(dir_inode);
+        printf("\n##################### %30s #####################\n\n", "DONE MAKING a NEW DIRECTORY");
+        return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -22,131 +95,27 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
         }
         print_usage();
-        if (argv[1][0] != '/') {
-                printf("Path needs to be absolute!\n");
+
+        if (check_abs_path(argv[1]) == -1) {
+                perror("Path error");
                 exit(EXIT_FAILURE);
         }
 
-        spinfs_init();
-
-        //TODO check existence of new file name in target directory, if yes
-        //modify the file with the same inode, if not write a new inode with
-        //new inode_num
-        //TODO get parent_inode based on the path of the destination
-
-        //printf("Argument: %s.\n", argv[1]);
+        /* Parse dirname and basename from command line argument */
         char *target_basename, *bnamec, *target_dirname, *dnamec;
         bnamec = strdup(argv[1]);
         dnamec = strdup(argv[1]);
         target_basename = basename(bnamec);
-        //printf("bnamec: %s.\n", bnamec);
         target_dirname = dirname(dnamec);
-        //printf("dnamec: %s.\n", bnamec);
-        //printf("Dirname: %s. Basename: %s.\n", target_dirname, target_basename);
 
-        struct spinfs_raw_inode *dirname_inode = malloc(sizeof(*dirname_inode));
-        uint32_t dirname_inode_num = 1;  //start traversing from root directory
-
-        /*
-         * Parse the path to get the target parent directory i-node
-         */
-        char *token;
-        token = strtok(target_dirname, "/");
-        if (token == NULL) {
-                // target dirname is root directory
-                dirname_inode_num = 1;
-        } else {
-                while (token != NULL) {
-                        dirname_inode = spinfs_read_inode(dirname_inode, spinfs_get_inode_table_entry(dirname_inode_num).physical_addr);
-                        dirname_inode_num = find_file_in_dir(dirname_inode, token);
-                        if (dirname_inode_num == 0) break;
-                        token = strtok(NULL, "/");
-                }
-        }
-        /*
-         * Load parent inode structure on flash to dirname_inode
-         */
-        if (dirname_inode_num == 0) {
-                printf("Dirname %s directory not found.\n", token);
+        spinfs_init();
+        if (make_directory(target_basename, target_dirname) == -1) {
+                perror("MKDIR error");
                 exit(EXIT_FAILURE);
-        } else {
-                printf("Dirname has inode number: %d\n", dirname_inode_num);
-                dirname_inode = spinfs_read_inode(dirname_inode, spinfs_get_inode_table_entry(dirname_inode_num).physical_addr);
         }
+        spinfs_deinit();
 
-        /*
-         * Check existing file in parent directory
-         */
-        int dest_not_exist_flag = 1;
-        uint32_t dup_basename_inode_num = find_file_in_dir(dirname_inode, target_basename);
-        if (dup_basename_inode_num) {
-                struct spinfs_raw_inode *dup_basename_inode = malloc(sizeof(*dup_basename_inode));
-                dup_basename_inode = spinfs_read_inode(dup_basename_inode, spinfs_get_inode_table_entry(dup_basename_inode_num).physical_addr);
-                if (S_ISDIR(dup_basename_inode->mode)) {
-                        printf("Destination directory is already existed.\n");
-                        exit(EXIT_FAILURE);
-                }
-                free(dup_basename_inode);
-        }
-
-        printf("Writing new directory.\n");
-#if 1
-        // dirname_inode is parent directory inode
-        struct dir_entry *parent_dir_table = (struct dir_entry *)dirname_inode->data;
-        int parent_dir_table_size = dirname_inode->data_size / sizeof(struct dir_entry);
-
-        struct spinfs_raw_inode *new_inode = malloc(sizeof(*new_inode));
-
-        new_inode->magic1 = SPINFS_MAGIC1;
-        strncpy(new_inode->name, target_basename, MAX_NAME_LEN);
-        new_inode->inode_num = get_inode_table_size() + 1;
-        new_inode->uid = getuid();
-        new_inode->gid = getgid();
-        new_inode->mode = S_IFDIR;
-        new_inode->flags = 0;
-        new_inode->ctime = time(NULL);
-        new_inode->mtime = time(NULL);
-        new_inode->parent_inode = dirname_inode->inode_num;
-        new_inode->version = 1;
-        new_inode->data_size = 0;
-        new_inode->magic2 = SPINFS_MAGIC2;
-
-        spinfs_write_inode(new_inode);
-
-        /*
-         * Adding new directory entry
-         */
-        printf("Adding new directory entry in %.*s directory.\n", MAX_NAME_LEN, dirname_inode->name);
-        parent_dir_table_size++;
-        // Allocate extra memory for 1 more entry
-        dirname_inode->data_size += sizeof(struct dir_entry);
-        dirname_inode = realloc(dirname_inode, sizeof(*dirname_inode) + dirname_inode->data_size);
-
-        // Assign new value for the new entry
-        parent_dir_table = (struct dir_entry *)dirname_inode->data;
-        strncpy(parent_dir_table[parent_dir_table_size - 1].name, new_inode->name, MAX_NAME_LEN);
-        parent_dir_table[parent_dir_table_size - 1].inode_num = new_inode->inode_num;
-
-        // Update dirname_inode inode and write to flash
-        dirname_inode->mtime = time(NULL);
-        ++dirname_inode->version;
-        printf("\n");
-        print_node_info(dirname_inode);
-        print_directory(dirname_inode);
-        spinfs_write_inode(dirname_inode);
-
-
-
-
-
-
-
-
-        free(new_inode);
-#endif
-        free(dirname_inode);
         free(bnamec);
         free(dnamec);
-        spinfs_deinit();
         return 0;
 }
