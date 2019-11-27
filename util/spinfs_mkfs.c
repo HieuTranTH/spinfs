@@ -11,6 +11,20 @@ void print_usage()
         fprintf(stderr, "\n");
 }
 
+#define TITLE_TEXT_WIDTH        32
+
+/* TODO layout is not consistent if fieldWidth is odd */
+void centerText(char *text, int fieldWidth) {
+        int padlen = (fieldWidth - strlen(text)) / 2;
+        printf("%*s%s%*s", padlen, "", text, padlen, "");
+}
+
+void centerTitleText(char *text, int fieldWidth) {
+        printf("\n#####################");
+        centerText(text, fieldWidth);
+        printf("#####################\n\n");
+}
+
 int write_root_inode()
 {
         /*
@@ -40,11 +54,11 @@ int write_root_inode()
 
 int format()
 {
-        printf("\n##################### %30s #####################\n\n", "RUNNING SPINFS FORMATTER");
+        centerTitleText("RUNNING SPINFS FORMATTER", TITLE_TEXT_WIDTH);
         spinfs_format();
         write_root_inode();
 
-        printf("\n##################### %30s #####################\n\n", "FINISHED SPINFS FORMATTER");
+        centerTitleText("FINISHED SPINFS FORMATTER", TITLE_TEXT_WIDTH);
         return 0;
 }
 
