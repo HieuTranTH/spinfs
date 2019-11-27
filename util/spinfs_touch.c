@@ -97,7 +97,7 @@ int touch_inode(char *bname, char *dname)
         //print_inode_info(dir_inode, __func__);
         uint32_t base_inum = spinfs_is_name_in_dir(dir_inode, bname);
         struct spinfs_raw_inode *base_inode = NULL;
-        if (base_inum == 1) {
+        if (base_inum == 1) {           /* dir_inode is not a directory */
                 return -1;
         } else if (base_inum > 1) {
                 printf("Basename exist, update mtime\n");
