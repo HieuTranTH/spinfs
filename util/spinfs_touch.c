@@ -29,7 +29,7 @@ void centerTitleText(char *text, int fieldWidth) {
 
 struct spinfs_raw_inode *update_parent_dir(struct spinfs_raw_inode *parent, char *new_name, uint32_t new_inum)
 {
-        print_inode_info(parent, __func__);
+        //print_inode_info(parent, __func__);
 
         /* Add new dirent to parent directory */
         parent->data_size += sizeof(struct dir_entry);
@@ -50,7 +50,7 @@ struct spinfs_raw_inode *update_parent_dir(struct spinfs_raw_inode *parent, char
 
 void update_inode_mtime(struct spinfs_raw_inode *s)
 {
-        print_inode_info(s, __func__);
+        //print_inode_info(s, __func__);
 
         s->mtime = time(NULL);
         ++s->version;
