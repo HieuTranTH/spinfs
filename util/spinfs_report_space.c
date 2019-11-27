@@ -28,6 +28,7 @@ int report_space()
 {
         centerTitleText("REPORTING SPACE USAGE", TITLE_TEXT_WIDTH);
 
+        print_head_tail_info(__func__);
         spinfs_report_space();
 
         centerTitleText("DONE REPORTING SPACE USAGE", TITLE_TEXT_WIDTH);
