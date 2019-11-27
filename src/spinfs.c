@@ -234,7 +234,7 @@ void spinfs_scan_fs()
         while (addr < tail) {
                 //printf("Address: 0x%06x\n", addr);
                 s = spinfs_read_inode(s, addr);
-                print_inode_info(s, __func__);
+                //print_inode_info(s, __func__);
                 spinfs_update_itable(s, addr);
                 addr += sizeof(*s) + s->data_size;
                 count++;
@@ -402,7 +402,7 @@ uint32_t spinfs_is_name_in_dir(struct spinfs_raw_inode *s, char *name)
 {
         if (!S_ISDIR(s->mode)) {
                 errno = ENOTDIR;
-                return 1;
+                return 1;       /* see comment */
         }
         int dirent_count = s->data_size / sizeof(struct dir_entry);
         /* loop through all dir entries and compare with name */
@@ -456,6 +456,14 @@ uint32_t spinfs_check_valid_path(char *path)
         }
         free(s);
         return inum;
+}
+
+int spinfs_get_dirent_index(struct dir_entry *t, int size, uint32_t inum)
+{
+        for (int i = 0; i < size; i++) {
+                if (t[i].inode_num == inum) return i;
+        }
+        return -1;
 }
 
 void print_head_tail_info(const char *caller)

@@ -93,6 +93,13 @@ uint32_t spinfs_is_name_in_dir(struct spinfs_raw_inode *s, char *name);
 
 /*
  * ******************************************************
+ * dirent functions
+ * ******************************************************
+ */
+int spinfs_get_dirent_index(struct dir_entry *t, int size, uint32_t inum);
+
+/*
+ * ******************************************************
  * spinfs functions
  * ******************************************************
  */
