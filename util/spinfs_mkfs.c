@@ -31,6 +31,10 @@ int write_root_inode()
          * Write root directory inode
          */
         struct spinfs_raw_inode *root_inode = malloc(sizeof(*root_inode));
+        if (root_inode == NULL) {
+                printf("Cannot alloc in %s()\n", __func__);
+                exit(EXIT_FAILURE);
+        }
 
         root_inode->magic1 = SPINFS_MAGIC1;
         strncpy(root_inode->name, "/", MAX_NAME_LEN);
@@ -66,7 +70,9 @@ int main(int argc, char *argv[])
 {
         print_usage();
 
-        spinfs_init();
+        if (spinfs_init() == -1) {
+                printf("Flash error!\n");
+        }
         if (format() == -1) {
                 perror("MKFS error");
                 exit(EXIT_FAILURE);
