@@ -580,6 +580,11 @@ uint32_t spinfs_scan_dirty()
  * Skip obsolete and deleted i-node
  * Copy valid i-node to a new place at tail
  */
+/*
+ * TODO: A bug when a file is larger than 2 sectors, garbage collector can only
+ * erase the 1st sector, then head is already point to the next node, thus the
+ * second and continued sector of the old file will never be erased.
+ */
 int spinfs_free_first_sector()
 {
         int count = 0;
